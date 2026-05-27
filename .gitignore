@@ -1,0 +1,24 @@
+# Virtual Environment
+venv/
+.venv/
+env/
+__pycache__/
+*.pyc
+
+# Data & Database
+data/
+chroma_db/
+
+# Environment Variables
+.env
+
+# IDs and local IDE config
+.idea/
+.vscode/
+
+# Streamlit
+.streamlit/
+
+# OS specific
+.DS_Store
+Thumbs.db
