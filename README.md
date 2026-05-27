@@ -2,6 +2,8 @@
 
 An open-source Retrieval-Augmented Generation (RAG) platform to explore and analyze the unsealed Jeffrey Epstein court documents. Built with LangChain, ChromaDB, and Streamlit.
 
+![Screenshot](pic.png)
+
 ## 🚀 Features
 - **Open Stack**: Fully open-source tools and models.
 - **Local & Fast**: Support for local execution via Ollama or high-speed cloud inference via Groq/OpenRouter.
@@ -19,7 +21,7 @@ An open-source Retrieval-Augmented Generation (RAG) platform to explore and anal
 ### 2. Installation
 Clone the repository and install dependencies:
 ```bash
-git clone <your-repo-url>
+git clone https://github.com/AbhisumatK/Epstein_Files_RAG
 cd Epstein_Files_RAG
 python -m venv venv
 .\venv\Scripts\activate  # On Windows
