@@ -10,7 +10,7 @@ load_dotenv()
 # Page configuration
 st.set_page_config(
     page_title="Epstein Files RAG Explorer",
-    page_icon="🔍",
+    page_icon="logo.png",
     layout="wide"
 )
 
@@ -43,7 +43,11 @@ if api_key:
         os.environ["OPENROUTER_API_KEY"] = api_key
 
 # Main UI
-st.title("🔍 Epstein Files RAG Explorer")
+col1, col2 = st.columns([1, 10])
+with col1:
+    st.image("logo.png", width=80)
+with col2:
+    st.title("Epstein Files RAG Explorer")
 st.markdown("Query the unsealed Epstein court documents using open-source RAG.")
 
 # Initialize chat history

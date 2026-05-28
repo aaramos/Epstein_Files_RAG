@@ -1,4 +1,4 @@
-# Epstein Files RAG Explorer 🔍
+# <img src="logo.png" width="50" align="center"> Epstein Files RAG Explorer 🔍
 
 An open-source Retrieval-Augmented Generation (RAG) platform to explore and analyze the unsealed Jeffrey Epstein court documents. Built with LangChain, ChromaDB, and Streamlit.
 
