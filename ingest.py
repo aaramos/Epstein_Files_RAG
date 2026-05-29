@@ -73,7 +73,10 @@ def index_documents(documents):
     chunks = text_splitter.split_documents(documents)
     
     print(f"Created {len(chunks)} chunks. Indexing into ChromaDB at {DB_DIR}...")
-    embeddings = HuggingFaceEmbeddings(model_name=EMBEDDING_MODEL)
+    embeddings = HuggingFaceEmbeddings(
+        model_name=EMBEDDING_MODEL,
+        model_kwargs={'device': 'cpu'} # Force CPU to save GPU memory
+    )
     
     vectorstore = Chroma.from_documents(
         documents=chunks,

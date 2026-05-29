@@ -58,6 +58,59 @@ if "messages" not in st.session_state:
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
+        if message.get("citations"):
+            with st.expander("View Citations"):
+                for i, doc in enumerate(message["citations"]):
+                    st.markdown(f"**Source {i+1}:** {doc['source']}")
+                    st.markdown(f"**Original File:** {doc['file']}")
+                    st.code(doc['content'][:500] + "...")
+
+# Starter Questions
+if not st.session_state.messages:
+    st.markdown("### 🔍 Suggested Questions")
+    questions = [
+        "Who are the prominent individuals mentioned in the flight logs?",
+        "What is the name of the aircraft used by Epstein?",
+        "Which countries has Jeffery Epstein visited?",
+        "List the documents related to the victims' depositions."
+    ]
+    
+    cols = st.columns(2)
+    for i, q in enumerate(questions):
+        if cols[i % 2].button(q, use_container_width=True):
+            # Simulate user input
+            st.session_state.messages.append({"role": "user", "content": q})
+            
+            with st.chat_message("user"):
+                st.markdown(q)
+            
+            with st.chat_message("assistant"):
+                with st.spinner("Analyzing documents..."):
+                    try:
+                        chain = get_rag_chain(provider=provider, model_name=model_name)
+                        response = chain.invoke({"input": q})
+                        answer = response["answer"]
+                        context = response["context"]
+                        st.markdown(answer)
+                        if context:
+                            with st.expander("View Citations"):
+                                for j, doc in enumerate(context):
+                                    st.markdown(f"**Source {j+1}:** {doc.metadata.get('source', 'Unknown')}")
+                                    st.markdown(f"**Original File:** {doc.metadata.get('original_filename', 'Unknown')}")
+                                    st.code(doc.page_content[:500] + "...")
+                        # Format citations for storage
+                        citations = [
+                            {
+                                "source": doc.metadata.get('source', 'Unknown'),
+                                "file": doc.metadata.get('original_filename', 'Unknown'),
+                                "content": doc.page_content
+                            } for doc in context
+                        ] if context else []
+                        
+                        st.session_state.messages.append({"role": "assistant", "content": answer, "citations": citations})
+                        st.rerun() # Refresh to hide starter questions
+                    except Exception as e:
+                        st.error(f"Error: {e}")
 
 # User Input
 if prompt := st.chat_input("Ask a question about the Epstein documents..."):
@@ -92,8 +145,17 @@ if prompt := st.chat_input("Ask a question about the Epstein documents..."):
                             st.markdown(f"**Original File:** {doc.metadata.get('original_filename', 'Unknown')}")
                             st.code(doc.page_content[:500] + "...")
                 
+                # Format citations for storage
+                citations = [
+                    {
+                        "source": doc.metadata.get('source', 'Unknown'),
+                        "file": doc.metadata.get('original_filename', 'Unknown'),
+                        "content": doc.page_content
+                    } for doc in context
+                ] if context else []
+                
                 # Add assistant message to history
-                st.session_state.messages.append({"role": "assistant", "content": answer})
+                st.session_state.messages.append({"role": "assistant", "content": answer, "citations": citations})
                 
             except Exception as e:
                 st.error(f"Error: {e}")

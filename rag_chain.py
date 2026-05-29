@@ -20,7 +20,10 @@ def get_rag_chain(provider=None, model_name=None):
     Sets up and returns the RAG chain.
     """
     # 1. Load Embeddings
-    embeddings = HuggingFaceEmbeddings(model_name=EMBEDDING_MODEL)
+    embeddings = HuggingFaceEmbeddings(
+        model_name=EMBEDDING_MODEL,
+        model_kwargs={'device': 'cpu'} # Force CPU to save GPU memory for Ollama
+    )
     
     # 2. Load Vector Store
     vectorstore = Chroma(
@@ -56,7 +59,10 @@ def get_rag_chain(provider=None, model_name=None):
     
     # 5. Create Chain
     combine_docs_chain = create_stuff_documents_chain(llm, prompt)
-    retriever = vectorstore.as_retriever(search_kwargs={"k": 5})
+    retriever = vectorstore.as_retriever(
+        search_type="mmr", # Max Marginal Relevance for diversity
+        search_kwargs={"k": 10, "fetch_k": 20}
+    )
     
     rag_chain = create_retrieval_chain(retriever, combine_docs_chain)
     
