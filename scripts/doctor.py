@@ -1,0 +1,120 @@
+from __future__ import annotations
+
+import json
+import os
+import socket
+import sys
+import urllib.error
+import urllib.request
+from pathlib import Path
+
+
+ROOT = Path(__file__).resolve().parents[1]
+DATA_DIR = ROOT / "data"
+DB_DIR = ROOT / "chroma_db"
+MANIFEST_PATH = Path(os.getenv("INGEST_MANIFEST_PATH", str(DB_DIR / "ingest_manifest.json")))
+OMLX_BASE_URL = os.getenv("MORNING_DISPATCH_MODEL_BASE_URL") or os.getenv("OMLX_BASE_URL", "http://127.0.0.1:1234/v1")
+
+
+def status(label: str, ok: bool, detail: str) -> None:
+    marker = "OK" if ok else "WARN"
+    print(f"[{marker}] {label}: {detail}")
+
+
+def command_exists(name: str) -> bool:
+    for directory in os.getenv("PATH", "").split(os.pathsep):
+        if (Path(directory) / name).exists():
+            return True
+    return False
+
+
+def read_omlx_key() -> str | None:
+    for name in ("MORNING_DISPATCH_MODEL_API_KEY", "OMLX_API_KEY", "LM_API_KEY", "ANTHROPIC_AUTH_TOKEN"):
+        value = os.getenv(name)
+        if value:
+            return value
+    settings_path = Path(os.getenv("OMLX_SETTINGS_PATH", "~/.omlx/settings.json")).expanduser()
+    try:
+        return json.loads(settings_path.read_text()).get("auth", {}).get("api_key")
+    except (OSError, json.JSONDecodeError):
+        return None
+
+
+def check_python() -> None:
+    version = f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}"
+    status("Python", sys.version_info[:2] >= (3, 11), version)
+
+
+def check_imports() -> None:
+    required = ("streamlit", "langchain", "chromadb", "sentence_transformers", "pyarrow", "torch")
+    missing = []
+    for module in required:
+        try:
+            __import__(module)
+        except Exception:
+            missing.append(module)
+    status("Python packages", not missing, "all present" if not missing else "missing " + ", ".join(missing))
+
+
+def check_mps() -> None:
+    try:
+        import torch
+        available = bool(torch.backends.mps.is_available())
+        detail = "available" if available else "not available; CPU fallback will be used"
+        status("Apple Silicon MPS", True, detail)
+    except Exception as exc:
+        status("Apple Silicon MPS", False, f"torch check failed: {exc}")
+
+
+def check_omlx() -> None:
+    key = read_omlx_key()
+    if not key:
+        status("oMLX key", False, "not found in env or ~/.omlx/settings.json")
+        return
+    request = urllib.request.Request(
+        OMLX_BASE_URL.rstrip("/") + "/models",
+        headers={"Authorization": f"Bearer {key}"},
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=5) as response:
+            payload = json.loads(response.read().decode("utf-8"))
+        count = len(payload.get("data", []))
+        status("oMLX API", True, f"{count} models at {OMLX_BASE_URL}")
+    except urllib.error.HTTPError as exc:
+        status("oMLX API", False, f"HTTP {exc.code} at {OMLX_BASE_URL}")
+    except Exception as exc:
+        status("oMLX API", False, f"{exc}")
+
+
+def check_data_index() -> None:
+    parquet_count = len(list(DATA_DIR.glob("epstein_files-*.parquet")))
+    status("Dataset", parquet_count == 634, f"{parquet_count}/634 parquet files")
+    try:
+        manifest = json.loads(MANIFEST_PATH.read_text())
+    except (OSError, json.JSONDecodeError):
+        manifest = {"completed_files": {}, "in_progress": {}}
+    completed = manifest.get("completed_files", {})
+    in_progress = manifest.get("in_progress", {})
+    chunks = sum(item.get("chunks", 0) for item in completed.values())
+    status("Chroma index", bool(completed), f"{len(completed)}/634 files, {len(in_progress)} in progress, {chunks:,} chunks")
+
+
+def check_ports() -> None:
+    with socket.socket() as sock:
+        app_running = sock.connect_ex(("127.0.0.1", int(os.getenv("STREAMLIT_PORT", "8501")))) == 0
+    status("Streamlit app", True, "running on 8501" if app_running else "not running")
+
+
+def check_container_runtime() -> None:
+    docker = command_exists("docker")
+    status("Docker", docker, "installed" if docker else "not installed; compose files are present but not runnable locally")
+
+
+if __name__ == "__main__":
+    check_python()
+    check_imports()
+    check_mps()
+    check_omlx()
+    check_data_index()
+    check_ports()
+    check_container_runtime()

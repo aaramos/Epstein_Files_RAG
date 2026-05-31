@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.epstein-rag.indexer</string>
+
+  <key>WorkingDirectory</key>
+  <string>/Users/macstudio/Documents/RAG/Epstein_Files_RAG_macstudio</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/Users/macstudio/Documents/RAG/Epstein_Files_RAG_macstudio/scripts/index_full_native.sh</string>
+  </array>
+
+  <key>RunAtLoad</key>
+  <false/>
+
+  <key>KeepAlive</key>
+  <false/>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>EMBEDDING_DEVICE</key>
+    <string>auto</string>
+  </dict>
+
+  <key>StandardOutPath</key>
+  <string>/Users/macstudio/Documents/RAG/Epstein_Files_RAG_macstudio/runtime/index_full.log</string>
+
+  <key>StandardErrorPath</key>
+  <string>/Users/macstudio/Documents/RAG/Epstein_Files_RAG_macstudio/runtime/index_full.err.log</string>
+</dict>
+</plist>

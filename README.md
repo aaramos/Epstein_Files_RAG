@@ -50,6 +50,12 @@ To check progress without importing the ML stack:
 scripts/status.sh
 ```
 
+To run a Mac readiness check:
+
+```bash
+scripts/doctor.sh
+```
+
 Useful ingestion tuning knobs:
 
 - `--row-batch-size`: parquet rows to stream at once.
@@ -69,6 +75,17 @@ The compose file mounts `./data`, `./chroma_db`, and your host
 `~/.omlx/settings.json` as a read-only secret. Containers do not get Apple MPS
 acceleration, so native Mac execution is preferred for high-throughput
 embedding/indexing.
+
+### macOS LaunchAgent Templates
+Example LaunchAgent plists live in `launchd/`:
+
+- `com.epstein-rag.app.plist.example` starts the Streamlit app.
+- `com.epstein-rag.indexer.plist.example` runs the full native indexer.
+
+Copy a template into `~/Library/LaunchAgents/`, remove the `.example` suffix,
+then load it with `launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/<file>.plist`.
+The templates use this checkout path:
+`/Users/macstudio/Documents/RAG/Epstein_Files_RAG_macstudio`.
 
 ### 1. Prerequisites
 - **Python 3.10+** (Recommend using a virtual environment).
