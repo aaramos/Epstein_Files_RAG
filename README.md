@@ -58,6 +58,7 @@ scripts/doctor.sh
 scripts/validate_rag.sh
 # Include a short oMLX generation call:
 scripts/validate_rag.sh --rag
+scripts/benchmark.sh
 ```
 
 Useful ingestion tuning knobs:
