@@ -48,6 +48,7 @@ To check progress without importing the ML stack:
 .venv/bin/python ingest.py --status --check-hub
 # or
 scripts/status.sh
+scripts/progress.sh
 ```
 
 To run a Mac readiness check:
