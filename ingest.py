@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import argparse
 import hashlib
 import json
@@ -6,15 +8,7 @@ from pathlib import Path
 
 os.environ["USE_TORCH"] = "1"
 
-import pandas as pd
-import pyarrow.parquet as pq
 from dotenv import load_dotenv
-from huggingface_hub import HfApi, hf_hub_download, snapshot_download
-from langchain_chroma import Chroma
-from langchain_core.documents import Document
-from langchain_huggingface import HuggingFaceEmbeddings
-from langchain_text_splitters import RecursiveCharacterTextSplitter
-from tqdm import tqdm
 
 load_dotenv()
 
@@ -53,6 +47,8 @@ def save_manifest(manifest: dict) -> None:
 
 
 def parquet_files_from_hub(limit: int | None = None) -> list[str]:
+    from huggingface_hub import HfApi
+
     files = [
         path for path in HfApi().list_repo_files(REPO_ID, repo_type="dataset")
         if path.endswith(".parquet")
@@ -62,6 +58,8 @@ def parquet_files_from_hub(limit: int | None = None) -> list[str]:
 
 
 def download_data(num_files: int | None = 1, all_files: bool = False) -> list[Path]:
+    from huggingface_hub import hf_hub_download, snapshot_download
+
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     if all_files:
         snapshot_download(
@@ -89,6 +87,8 @@ def download_data(num_files: int | None = 1, all_files: bool = False) -> list[Pa
 
 
 def available_columns(file_path: Path) -> tuple[str | None, list[str]]:
+    import pyarrow.parquet as pq
+
     schema_names = set(pq.ParquetFile(file_path).schema.names)
     text_col = next((column for column in TEXT_COLUMNS if column in schema_names), None)
     columns = [text_col] if text_col else []
@@ -97,6 +97,9 @@ def available_columns(file_path: Path) -> tuple[str | None, list[str]]:
 
 
 def process_parquet(file_path: Path) -> list[Document]:
+    import pandas as pd
+    from langchain_core.documents import Document
+
     text_col, columns = available_columns(file_path)
     if not text_col:
         print(f"Skipping {file_path.name}: no text column found.")
@@ -132,6 +135,8 @@ def chunk_id(doc: Document, chunk_index: int) -> str:
 
 
 def chunks_with_ids(documents: list[Document]) -> tuple[list[Document], list[str]]:
+    from langchain_text_splitters import RecursiveCharacterTextSplitter
+
     splitter = RecursiveCharacterTextSplitter(
         chunk_size=int(os.getenv("CHUNK_SIZE", "1000")),
         chunk_overlap=int(os.getenv("CHUNK_OVERLAP", "100")),
@@ -148,6 +153,10 @@ def chunks_with_ids(documents: list[Document]) -> tuple[list[Document], list[str
 
 
 def index_files(file_paths: list[Path], batch_size: int) -> None:
+    from langchain_chroma import Chroma
+    from langchain_huggingface import HuggingFaceEmbeddings
+    from tqdm import tqdm
+
     manifest = load_manifest()
     completed = manifest.setdefault("completed_files", {})
     embeddings = HuggingFaceEmbeddings(
@@ -172,21 +181,58 @@ def index_files(file_paths: list[Path], batch_size: int) -> None:
         save_manifest(manifest)
 
 
+def local_parquet_files(limit: int | None = None) -> list[Path]:
+    files = sorted(DATA_DIR.glob("epstein_files-*.parquet"))
+    return files[:limit] if limit else files
+
+
+def print_status(check_hub: bool = False) -> None:
+    manifest = load_manifest()
+    completed = manifest.get("completed_files", {})
+    local_files = local_parquet_files()
+    indexed_docs = sum(item.get("documents", 0) for item in completed.values())
+    indexed_chunks = sum(item.get("chunks", 0) for item in completed.values())
+    print(f"Data dir: {DATA_DIR}")
+    print(f"DB dir: {DB_DIR}")
+    print(f"Local parquet files: {len(local_files)}")
+    print(f"Indexed parquet files: {len(completed)}")
+    print(f"Indexed documents: {indexed_docs}")
+    print(f"Indexed chunks: {indexed_chunks}")
+    if check_hub:
+        total = len(parquet_files_from_hub())
+        print(f"Hub parquet files: {total}")
+        if total:
+            print(f"Download progress: {len(local_files)}/{total} ({len(local_files) / total:.1%})")
+            print(f"Index progress: {len(completed)}/{total} ({len(completed) / total:.1%})")
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Download and index Epstein Files parquet data.")
     parser.add_argument("--all", action="store_true", help="Download and index every parquet file.")
     parser.add_argument("--num-files", type=int, default=1, help="Number of parquet files to download/index when not using --all.")
     parser.add_argument("--skip-download", action="store_true", help="Index already-downloaded files only.")
+    parser.add_argument("--download-only", action="store_true", help="Download parquet files without indexing them.")
+    parser.add_argument("--status", action="store_true", help="Print local download/index status and exit.")
+    parser.add_argument("--check-hub", action="store_true", help="Include Hugging Face file counts in --status output.")
     parser.add_argument("--batch-size", type=int, default=int(os.getenv("INGEST_BATCH_SIZE", "512")))
+    parser.add_argument("--embedding-device", choices=("auto", "cpu", "mps"), help="Override EMBEDDING_DEVICE for this run.")
     return parser.parse_args()
 
 
 if __name__ == "__main__":
     args = parse_args()
+    if args.embedding_device:
+        os.environ["EMBEDDING_DEVICE"] = args.embedding_device
+    if args.status:
+        print_status(check_hub=args.check_hub)
+        raise SystemExit(0)
     if args.skip_download:
-        files = sorted(DATA_DIR.glob("epstein_files-*.parquet"))
+        files = local_parquet_files()
         if not args.all:
             files = files[: args.num_files]
     else:
         files = download_data(num_files=args.num_files, all_files=args.all)
-    index_files(files, batch_size=args.batch_size)
+    if args.download_only:
+        print(f"Downloaded/available parquet files: {len(files)}")
+    else:
+        index_files(files, batch_size=args.batch_size)

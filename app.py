@@ -1,5 +1,7 @@
 import os
 os.environ["USE_TORCH"] = "1" # Force PyTorch, disable TensorFlow
+import json
+from pathlib import Path
 import streamlit as st
 import os
 from dotenv import load_dotenv
@@ -11,6 +13,20 @@ load_dotenv()
 @st.cache_resource(show_spinner=False)
 def get_cached_rag_chain(provider, model_name):
     return get_rag_chain(provider=provider, model_name=model_name)
+
+
+def index_status():
+    data_dir = Path(os.getenv("DATA_PATH", "./data"))
+    manifest_path = Path(os.getenv("INGEST_MANIFEST_PATH", "./chroma_db/ingest_manifest.json"))
+    local_files = len(list(data_dir.glob("epstein_files-*.parquet")))
+    try:
+        manifest = json.loads(manifest_path.read_text())
+    except (OSError, json.JSONDecodeError):
+        manifest = {"completed_files": {}}
+    completed = manifest.get("completed_files", {})
+    indexed_docs = sum(item.get("documents", 0) for item in completed.values())
+    indexed_chunks = sum(item.get("chunks", 0) for item in completed.values())
+    return local_files, len(completed), indexed_docs, indexed_chunks
 
 
 # Page configuration
@@ -54,6 +70,14 @@ if api_key:
         os.environ["GROQ_API_KEY"] = api_key
     elif provider == "OPENROUTER":
         os.environ["OPENROUTER_API_KEY"] = api_key
+
+local_files, indexed_files, indexed_docs, indexed_chunks = index_status()
+st.sidebar.divider()
+st.sidebar.caption("Index Status")
+st.sidebar.metric("Downloaded files", local_files)
+st.sidebar.metric("Indexed files", indexed_files)
+if indexed_chunks:
+    st.sidebar.caption(f"{indexed_docs:,} documents / {indexed_chunks:,} chunks")
 
 # Main UI
 col1, col2 = st.columns([1, 10])

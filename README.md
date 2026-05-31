@@ -28,11 +28,18 @@ python3.11 -m venv .venv
 For the full dataset:
 
 ```bash
-.venv/bin/python ingest.py --all
+.venv/bin/python ingest.py --all --download-only
+.venv/bin/python ingest.py --all --skip-download --embedding-device mps
 ```
 
 The ingester is resumable. It records completed parquet files in
 `chroma_db/ingest_manifest.json` and uses stable chunk IDs.
+
+To check progress without importing the ML stack:
+
+```bash
+.venv/bin/python ingest.py --status --check-hub
+```
 
 ### Docker
 The app can run in Docker Compose and connect back to host oMLX:
