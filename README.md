@@ -68,6 +68,12 @@ Useful ingestion tuning knobs:
   If PyTorch cannot initialize MPS on the current macOS/runtime, the app falls
   back to CPU automatically.
 
+Useful local generation knobs:
+
+- `OMLX_MAX_TOKENS`: response cap for local oMLX calls.
+- `OMLX_TIMEOUT_SECONDS`: request timeout for local oMLX calls.
+- `LLM_TEMPERATURE`: shared temperature setting for all providers.
+
 ### Docker
 The app can run in Docker Compose and connect back to host oMLX:
 

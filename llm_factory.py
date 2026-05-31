@@ -30,6 +30,26 @@ def _get_omlx_api_key():
     return None
 
 
+def _int_from_env(name, default):
+    raw_value = os.getenv(name)
+    if not raw_value:
+        return default
+    try:
+        return int(raw_value)
+    except ValueError:
+        return default
+
+
+def _float_from_env(name, default):
+    raw_value = os.getenv(name)
+    if not raw_value:
+        return default
+    try:
+        return float(raw_value)
+    except ValueError:
+        return default
+
+
 def get_llm(provider=None, model_name=None):
     """
     Factory function to get the LLM based on provider.
@@ -46,7 +66,9 @@ def get_llm(provider=None, model_name=None):
             openai_api_key=api_key,
             openai_api_base=base_url,
             model_name=model,
-            temperature=0
+            temperature=_float_from_env("LLM_TEMPERATURE", 0),
+            max_tokens=_int_from_env("OMLX_MAX_TOKENS", 2048),
+            request_timeout=_float_from_env("OMLX_TIMEOUT_SECONDS", 180),
         )
 
     if provider == "OLLAMA":
@@ -55,7 +77,8 @@ def get_llm(provider=None, model_name=None):
         return ChatOllama(
             model=model,
             base_url=base_url,
-            temperature=0
+            temperature=_float_from_env("LLM_TEMPERATURE", 0),
+            num_predict=_int_from_env("OLLAMA_MAX_TOKENS", 2048),
         )
     
     elif provider == "GROQ":
@@ -66,7 +89,8 @@ def get_llm(provider=None, model_name=None):
         return ChatGroq(
             groq_api_key=api_key,
             model_name=model,
-            temperature=0
+            temperature=_float_from_env("LLM_TEMPERATURE", 0),
+            max_tokens=_int_from_env("GROQ_MAX_TOKENS", 2048),
         )
     
     elif provider == "OPENROUTER":
@@ -78,7 +102,9 @@ def get_llm(provider=None, model_name=None):
             openai_api_key=api_key,
             openai_api_base="https://openrouter.ai/api/v1",
             model_name=model,
-            temperature=0
+            temperature=_float_from_env("LLM_TEMPERATURE", 0),
+            max_tokens=_int_from_env("OPENROUTER_MAX_TOKENS", 2048),
+            request_timeout=_float_from_env("OPENROUTER_TIMEOUT_SECONDS", 180),
         )
     
     else:
