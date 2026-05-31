@@ -24,9 +24,10 @@ def index_status():
     except (OSError, json.JSONDecodeError):
         manifest = {"completed_files": {}}
     completed = manifest.get("completed_files", {})
+    in_progress = manifest.get("in_progress", {})
     indexed_docs = sum(item.get("documents", 0) for item in completed.values())
     indexed_chunks = sum(item.get("chunks", 0) for item in completed.values())
-    return local_files, len(completed), indexed_docs, indexed_chunks
+    return local_files, len(completed), len(in_progress), indexed_docs, indexed_chunks
 
 
 # Page configuration
@@ -71,11 +72,13 @@ if api_key:
     elif provider == "OPENROUTER":
         os.environ["OPENROUTER_API_KEY"] = api_key
 
-local_files, indexed_files, indexed_docs, indexed_chunks = index_status()
+local_files, indexed_files, in_progress_files, indexed_docs, indexed_chunks = index_status()
 st.sidebar.divider()
 st.sidebar.caption("Index Status")
 st.sidebar.metric("Downloaded files", local_files)
 st.sidebar.metric("Indexed files", indexed_files)
+if in_progress_files:
+    st.sidebar.caption(f"{in_progress_files} file(s) currently indexing")
 if indexed_chunks:
     st.sidebar.caption(f"{indexed_docs:,} documents / {indexed_chunks:,} chunks")
 

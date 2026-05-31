@@ -4,11 +4,16 @@ import argparse
 import hashlib
 import json
 import os
+from datetime import datetime, timezone
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 os.environ["USE_TORCH"] = "1"
 
 from dotenv import load_dotenv
+
+if TYPE_CHECKING:
+    from langchain_core.documents import Document
 
 load_dotenv()
 
@@ -19,6 +24,10 @@ MANIFEST_PATH = Path(os.getenv("INGEST_MANIFEST_PATH", "./chroma_db/ingest_manif
 EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "sentence-transformers/all-MiniLM-L6-v2")
 TEXT_COLUMNS = ("text_content", "text", "content")
 FILENAME_COLUMNS = ("file_name", "original_filename", "filename", "source")
+
+
+def utc_now() -> str:
+    return datetime.now(timezone.utc).isoformat()
 
 
 def embedding_device() -> str:
@@ -97,34 +106,47 @@ def available_columns(file_path: Path) -> tuple[str | None, list[str]]:
 
 
 def process_parquet(file_path: Path) -> list[Document]:
-    import pandas as pd
+    documents = []
+    for batch in iter_document_batches(file_path):
+        documents.extend(batch)
+    return documents
+
+
+def iter_document_batches(file_path: Path, row_batch_size: int | None = None):
+    import pyarrow.parquet as pq
     from langchain_core.documents import Document
 
     text_col, columns = available_columns(file_path)
     if not text_col:
         print(f"Skipping {file_path.name}: no text column found.")
-        return []
+        return
 
-    df = pd.read_parquet(file_path, columns=columns)
-    filename_col = next((column for column in FILENAME_COLUMNS if column in df.columns), None)
-    documents = []
-    for row_number, row in enumerate(df.itertuples(index=False), start=1):
-        row_data = row._asdict()
-        text = str(row_data.get(text_col) or "").strip()
-        if len(text) < 50:
-            continue
-        original_filename = row_data.get(filename_col) if filename_col else None
-        documents.append(
-            Document(
-                page_content=text,
-                metadata={
-                    "source": file_path.name,
-                    "row_number": row_number,
-                    "original_filename": original_filename or "unknown",
-                },
+    parquet_file = pq.ParquetFile(file_path)
+    batch_size = row_batch_size or int(os.getenv("PARQUET_ROW_BATCH_SIZE", "2048"))
+    row_offset = 0
+    for record_batch in parquet_file.iter_batches(batch_size=batch_size, columns=columns):
+        batch = record_batch.to_pydict()
+        filename_col = next((column for column in FILENAME_COLUMNS if column in batch), None)
+        documents = []
+        for index, text_value in enumerate(batch.get(text_col, []), start=1):
+            row_number = row_offset + index
+            text = str(text_value or "").strip()
+            if len(text) < 50:
+                continue
+            original_filename = batch[filename_col][index - 1] if filename_col else None
+            documents.append(
+                Document(
+                    page_content=text,
+                    metadata={
+                        "source": file_path.name,
+                        "row_number": row_number,
+                        "original_filename": original_filename or "unknown",
+                    },
+                )
             )
-        )
-    return documents
+        row_offset += record_batch.num_rows
+        if documents:
+            yield documents
 
 
 def chunk_id(doc: Document, chunk_index: int) -> str:
@@ -152,7 +174,14 @@ def chunks_with_ids(documents: list[Document]) -> tuple[list[Document], list[str
     return chunks, ids
 
 
-def index_files(file_paths: list[Path], batch_size: int) -> None:
+def delete_partial_file(vectorstore, file_name: str) -> None:
+    try:
+        vectorstore._collection.delete(where={"source": file_name})
+    except Exception:
+        pass
+
+
+def index_files(file_paths: list[Path], batch_size: int, row_batch_size: int | None = None) -> None:
     from langchain_chroma import Chroma
     from langchain_huggingface import HuggingFaceEmbeddings
     from tqdm import tqdm
@@ -172,12 +201,26 @@ def index_files(file_paths: list[Path], batch_size: int) -> None:
     for file_path in tqdm(file_paths, desc="Indexing parquet files"):
         if completed.get(file_path.name):
             continue
-        documents = process_parquet(file_path)
-        chunks, ids = chunks_with_ids(documents)
-        for start in tqdm(range(0, len(chunks), batch_size), desc=file_path.name, leave=False):
-            end = start + batch_size
-            vectorstore.add_documents(chunks[start:end], ids=ids[start:end])
-        completed[file_path.name] = {"documents": len(documents), "chunks": len(chunks)}
+        delete_partial_file(vectorstore, file_path.name)
+        manifest.setdefault("in_progress", {})[file_path.name] = {"started_at": utc_now()}
+        save_manifest(manifest)
+
+        document_count = 0
+        chunk_count = 0
+        for documents in tqdm(iter_document_batches(file_path, row_batch_size=row_batch_size), desc=file_path.name, leave=False):
+            chunks, ids = chunks_with_ids(documents)
+            document_count += len(documents)
+            chunk_count += len(chunks)
+            for start in range(0, len(chunks), batch_size):
+                end = start + batch_size
+                vectorstore.add_documents(chunks[start:end], ids=ids[start:end])
+        completed[file_path.name] = {
+            "documents": document_count,
+            "chunks": chunk_count,
+            "indexed_at": utc_now(),
+            "bytes": file_path.stat().st_size if file_path.exists() else None,
+        }
+        manifest.get("in_progress", {}).pop(file_path.name, None)
         save_manifest(manifest)
 
 
@@ -189,6 +232,7 @@ def local_parquet_files(limit: int | None = None) -> list[Path]:
 def print_status(check_hub: bool = False) -> None:
     manifest = load_manifest()
     completed = manifest.get("completed_files", {})
+    in_progress = manifest.get("in_progress", {})
     local_files = local_parquet_files()
     indexed_docs = sum(item.get("documents", 0) for item in completed.values())
     indexed_chunks = sum(item.get("chunks", 0) for item in completed.values())
@@ -196,6 +240,7 @@ def print_status(check_hub: bool = False) -> None:
     print(f"DB dir: {DB_DIR}")
     print(f"Local parquet files: {len(local_files)}")
     print(f"Indexed parquet files: {len(completed)}")
+    print(f"In-progress parquet files: {len(in_progress)}")
     print(f"Indexed documents: {indexed_docs}")
     print(f"Indexed chunks: {indexed_chunks}")
     if check_hub:
@@ -215,6 +260,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--status", action="store_true", help="Print local download/index status and exit.")
     parser.add_argument("--check-hub", action="store_true", help="Include Hugging Face file counts in --status output.")
     parser.add_argument("--batch-size", type=int, default=int(os.getenv("INGEST_BATCH_SIZE", "512")))
+    parser.add_argument("--row-batch-size", type=int, default=int(os.getenv("PARQUET_ROW_BATCH_SIZE", "2048")), help="Parquet rows to stream at a time.")
     parser.add_argument("--embedding-device", choices=("auto", "cpu", "mps"), help="Override EMBEDDING_DEVICE for this run.")
     return parser.parse_args()
 
@@ -235,4 +281,4 @@ if __name__ == "__main__":
     if args.download_only:
         print(f"Downloaded/available parquet files: {len(files)}")
     else:
-        index_files(files, batch_size=args.batch_size)
+        index_files(files, batch_size=args.batch_size, row_batch_size=args.row_batch_size)
