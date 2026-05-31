@@ -10,6 +10,8 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 DATA_DIR = ROOT / "data"
 DB_DIR = ROOT / "chroma_db"
 MANIFEST_PATH = Path(os.getenv("INGEST_MANIFEST_PATH", str(DB_DIR / "ingest_manifest.json")))
@@ -99,6 +101,17 @@ def check_data_index() -> None:
     status("Chroma index", bool(completed), f"{len(completed)}/634 files, {len(in_progress)} in progress, {chunks:,} chunks")
 
 
+def check_retrieval() -> None:
+    try:
+        from rag_chain import get_vectorstore
+
+        vectorstore = get_vectorstore()
+        docs = vectorstore.as_retriever(search_kwargs={"k": 3}).invoke("Epstein aircraft")
+        status("Retrieval", len(docs) >= 1, f"{len(docs)} docs returned")
+    except Exception as exc:
+        status("Retrieval", False, f"{exc}")
+
+
 def check_ports() -> None:
     with socket.socket() as sock:
         app_running = sock.connect_ex(("127.0.0.1", int(os.getenv("STREAMLIT_PORT", "8501")))) == 0
@@ -116,5 +129,6 @@ if __name__ == "__main__":
     check_mps()
     check_omlx()
     check_data_index()
+    check_retrieval()
     check_ports()
     check_container_runtime()

@@ -81,6 +81,10 @@ if in_progress_files:
     st.sidebar.caption(f"{in_progress_files} file(s) currently indexing")
 if indexed_chunks:
     st.sidebar.caption(f"{indexed_docs:,} documents / {indexed_chunks:,} chunks")
+if not indexed_chunks:
+    st.sidebar.warning("Index is empty. Run `scripts/index_full_native.sh` before asking questions.")
+elif local_files and indexed_files < local_files:
+    st.sidebar.info("The app can answer from the partial index while full indexing continues.")
 
 # Main UI
 col1, col2 = st.columns([1, 10])

@@ -55,6 +55,9 @@ To run a Mac readiness check:
 
 ```bash
 scripts/doctor.sh
+scripts/validate_rag.sh
+# Include a short oMLX generation call:
+scripts/validate_rag.sh --rag
 ```
 
 Useful ingestion tuning knobs:
