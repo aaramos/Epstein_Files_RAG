@@ -32,11 +32,22 @@ def _embedding_device():
 
 @lru_cache(maxsize=1)
 def get_embeddings():
-    return HuggingFaceEmbeddings(
-        model_name=EMBEDDING_MODEL,
-        model_kwargs={"device": _embedding_device()},
-        encode_kwargs={"batch_size": int(os.getenv("EMBEDDING_QUERY_BATCH_SIZE", "32"))},
-    )
+    selected_device = _embedding_device()
+    try:
+        return HuggingFaceEmbeddings(
+            model_name=EMBEDDING_MODEL,
+            model_kwargs={"device": selected_device},
+            encode_kwargs={"batch_size": int(os.getenv("EMBEDDING_QUERY_BATCH_SIZE", "32"))},
+        )
+    except RuntimeError as exc:
+        if selected_device == "cpu":
+            raise
+        print(f"Embedding device '{selected_device}' failed ({exc}); falling back to CPU.")
+        return HuggingFaceEmbeddings(
+            model_name=EMBEDDING_MODEL,
+            model_kwargs={"device": "cpu"},
+            encode_kwargs={"batch_size": int(os.getenv("EMBEDDING_QUERY_BATCH_SIZE", "32"))},
+        )
 
 
 @lru_cache(maxsize=1)

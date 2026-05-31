@@ -43,6 +43,27 @@ def embedding_device() -> str:
     return "cpu"
 
 
+def create_embeddings(device: str | None = None):
+    from langchain_huggingface import HuggingFaceEmbeddings
+
+    selected_device = device or embedding_device()
+    try:
+        return HuggingFaceEmbeddings(
+            model_name=EMBEDDING_MODEL,
+            model_kwargs={"device": selected_device},
+            encode_kwargs={"batch_size": int(os.getenv("EMBEDDING_BATCH_SIZE", "64"))},
+        )
+    except RuntimeError as exc:
+        if selected_device == "cpu":
+            raise
+        print(f"Embedding device '{selected_device}' failed ({exc}); falling back to CPU.")
+        return HuggingFaceEmbeddings(
+            model_name=EMBEDDING_MODEL,
+            model_kwargs={"device": "cpu"},
+            encode_kwargs={"batch_size": int(os.getenv("EMBEDDING_BATCH_SIZE", "64"))},
+        )
+
+
 def load_manifest() -> dict:
     try:
         return json.loads(MANIFEST_PATH.read_text())
@@ -183,16 +204,11 @@ def delete_partial_file(vectorstore, file_name: str) -> None:
 
 def index_files(file_paths: list[Path], batch_size: int, row_batch_size: int | None = None) -> None:
     from langchain_chroma import Chroma
-    from langchain_huggingface import HuggingFaceEmbeddings
     from tqdm import tqdm
 
     manifest = load_manifest()
     completed = manifest.setdefault("completed_files", {})
-    embeddings = HuggingFaceEmbeddings(
-        model_name=EMBEDDING_MODEL,
-        model_kwargs={"device": embedding_device()},
-        encode_kwargs={"batch_size": int(os.getenv("EMBEDDING_BATCH_SIZE", "64"))},
-    )
+    embeddings = create_embeddings()
     vectorstore = Chroma(
         persist_directory=str(DB_DIR),
         embedding_function=embeddings,

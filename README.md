@@ -32,6 +32,12 @@ For the full dataset:
 .venv/bin/python ingest.py --all --skip-download --embedding-device mps
 ```
 
+Or use the native helper:
+
+```bash
+EMBEDDING_DEVICE=auto scripts/index_full_native.sh
+```
+
 The ingester is resumable. It records completed parquet files in
 `chroma_db/ingest_manifest.json`, streams parquet row batches to keep memory
 bounded, and uses stable chunk IDs.
@@ -40,13 +46,17 @@ To check progress without importing the ML stack:
 
 ```bash
 .venv/bin/python ingest.py --status --check-hub
+# or
+scripts/status.sh
 ```
 
 Useful ingestion tuning knobs:
 
 - `--row-batch-size`: parquet rows to stream at once.
 - `--batch-size`: chunks to embed/write to Chroma at once.
-- `--embedding-device mps`: force Apple Silicon acceleration for native runs.
+- `--embedding-device mps`: request Apple Silicon acceleration for native runs.
+  If PyTorch cannot initialize MPS on the current macOS/runtime, the app falls
+  back to CPU automatically.
 
 ### Docker
 The app can run in Docker Compose and connect back to host oMLX:
@@ -101,6 +111,8 @@ python ingest.py
 Start the Streamlit dashboard:
 ```bash
 streamlit run app.py
+# Mac/oMLX helper:
+scripts/run_native.sh
 ```
 
 ---

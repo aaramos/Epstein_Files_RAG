@@ -6,8 +6,10 @@ __pycache__/
 *.pyc
 
 # Data & Database
+data
 data/
 chroma_db/
+runtime/
 
 # Environment Variables
 .env
