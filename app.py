@@ -7,6 +7,12 @@ from rag_chain import get_rag_chain
 
 load_dotenv()
 
+
+@st.cache_resource(show_spinner=False)
+def get_cached_rag_chain(provider, model_name):
+    return get_rag_chain(provider=provider, model_name=model_name)
+
+
 # Page configuration
 st.set_page_config(
     page_title="Epstein Files RAG Explorer",
@@ -16,17 +22,24 @@ st.set_page_config(
 
 # Sidebar
 st.sidebar.title("Configuration")
+providers = ["OMLX", "OLLAMA", "GROQ", "OPENROUTER"]
+configured_provider = os.getenv("LLM_PROVIDER", "OMLX").upper()
 provider = st.sidebar.selectbox(
     "Select LLM Provider",
-    ["OLLAMA", "GROQ", "OPENROUTER"],
-    index=0
+    providers,
+    index=providers.index(configured_provider) if configured_provider in providers else 0
 )
 
 # API Keys and Models
 api_key = None
 model_name = None
 
-if provider == "GROQ":
+if provider == "OMLX":
+    model_name = st.sidebar.text_input(
+        "oMLX Model",
+        value=os.getenv("OMLX_MODEL") or os.getenv("MORNING_DISPATCH_LIBRARIAN_MODEL", "Gemma4-MTP-26B-BF16")
+    )
+elif provider == "GROQ":
     api_key = st.sidebar.text_input("Groq API Key", type="password", value=os.getenv("GROQ_API_KEY", ""))
     model_name = st.sidebar.text_input("Groq Model", value="llama-3.3-70b-versatile")
 elif provider == "OPENROUTER":
@@ -87,7 +100,7 @@ if not st.session_state.messages:
             with st.chat_message("assistant"):
                 with st.spinner("Analyzing documents..."):
                     try:
-                        chain = get_rag_chain(provider=provider, model_name=model_name)
+                        chain = get_cached_rag_chain(provider, model_name)
                         response = chain.invoke({"input": q})
                         answer = response["answer"]
                         context = response["context"]
@@ -126,7 +139,7 @@ if prompt := st.chat_input("Ask a question about the Epstein documents..."):
         with st.spinner("Analyzing documents..."):
             try:
                 # Initialize chain (ideally cached, but simplified here)
-                chain = get_rag_chain(provider=provider, model_name=model_name)
+                chain = get_cached_rag_chain(provider, model_name)
                 
                 # Run query
                 response = chain.invoke({"input": prompt})

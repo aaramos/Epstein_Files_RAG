@@ -14,6 +14,38 @@ An open-source Retrieval-Augmented Generation (RAG) platform to explore and anal
 
 ## 🛠️ Setup Instructions
 
+### Mac Studio / oMLX Quick Start
+This fork is tuned for Apple Silicon and local oMLX:
+
+```bash
+cp .env.example .env
+python3.11 -m venv .venv
+.venv/bin/python -m pip install -r requirements.txt
+.venv/bin/python ingest.py --num-files 1
+.venv/bin/python -m streamlit run app.py
+```
+
+For the full dataset:
+
+```bash
+.venv/bin/python ingest.py --all
+```
+
+The ingester is resumable. It records completed parquet files in
+`chroma_db/ingest_manifest.json` and uses stable chunk IDs.
+
+### Docker
+The app can run in Docker Compose and connect back to host oMLX:
+
+```bash
+docker compose up --build
+```
+
+The compose file mounts `./data`, `./chroma_db`, and your host
+`~/.omlx/settings.json` as a read-only secret. Containers do not get Apple MPS
+acceleration, so native Mac execution is preferred for high-throughput
+embedding/indexing.
+
 ### 1. Prerequisites
 - **Python 3.10+** (Recommend using a virtual environment).
 - **Ollama** (Optional): If you want to run LLMs completely locally. Download at [ollama.com](https://ollama.com/).
@@ -69,4 +101,3 @@ This application includes specialized system prompts to ensure the assistant sta
 
 ## 📄 License
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-

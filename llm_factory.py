@@ -1,4 +1,6 @@
 import os
+import json
+from pathlib import Path
 from dotenv import load_dotenv
 from langchain_ollama import ChatOllama
 from langchain_groq import ChatGroq
@@ -6,12 +8,47 @@ from langchain_openai import ChatOpenAI
 
 load_dotenv()
 
+
+def _get_omlx_api_key():
+    api_key = (
+        os.getenv("MORNING_DISPATCH_MODEL_API_KEY")
+        or os.getenv("OMLX_API_KEY")
+        or os.getenv("LM_API_KEY")
+        or os.getenv("ANTHROPIC_AUTH_TOKEN")
+    )
+    if api_key:
+        return api_key
+
+    settings_path = Path(os.getenv("OMLX_SETTINGS_PATH", "~/.omlx/settings.json")).expanduser()
+    if settings_path.exists():
+        try:
+            settings = json.loads(settings_path.read_text())
+            return settings.get("auth", {}).get("api_key")
+        except (OSError, json.JSONDecodeError):
+            return None
+
+    return None
+
+
 def get_llm(provider=None, model_name=None):
     """
     Factory function to get the LLM based on provider.
     """
     provider = provider or os.getenv("LLM_PROVIDER", "OLLAMA").upper()
     
+    if provider == "OMLX":
+        api_key = _get_omlx_api_key()
+        if not api_key:
+            raise ValueError("oMLX API key not found. Set MORNING_DISPATCH_MODEL_API_KEY, OMLX_API_KEY, LM_API_KEY, or OMLX_SETTINGS_PATH.")
+        base_url = os.getenv("MORNING_DISPATCH_MODEL_BASE_URL") or os.getenv("OMLX_BASE_URL", "http://127.0.0.1:1234/v1")
+        model = model_name or os.getenv("OMLX_MODEL") or os.getenv("MORNING_DISPATCH_LIBRARIAN_MODEL", "Gemma4-MTP-26B-BF16")
+        return ChatOpenAI(
+            openai_api_key=api_key,
+            openai_api_base=base_url,
+            model_name=model,
+            temperature=0
+        )
+
     if provider == "OLLAMA":
         base_url = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
         model = model_name or "llama3"

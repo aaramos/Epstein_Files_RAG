@@ -20,10 +20,11 @@ streamlit
 python-dotenv
 pandas
 fastparquet
+pyarrow
 requests
 tqdm
 huggingface_hub
+watchdog
 
-# Fix for Protobuf / TensorFlow conflicts on Windows
-# This version is known to be stable with current Transformers
-protobuf==3.20.3
+# Windows-only note: if TensorFlow/Transformers protobuf DLL issues appear,
+# try protobuf==3.20.3 in a separate Windows constraints file.

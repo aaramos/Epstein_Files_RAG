@@ -1,6 +1,7 @@
 import os
 os.environ["USE_TORCH"] = "1" # Force PyTorch, disable TensorFlow
 import os
+from functools import lru_cache
 from dotenv import load_dotenv
 from langchain_chroma import Chroma
 from langchain_huggingface import HuggingFaceEmbeddings
@@ -15,26 +16,45 @@ load_dotenv()
 DB_DIR = os.getenv("DB_PATH", "./chroma_db")
 EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
 
+
+def _embedding_device():
+    configured = os.getenv("EMBEDDING_DEVICE", "auto").lower()
+    if configured != "auto":
+        return configured
+    try:
+        import torch
+        if torch.backends.mps.is_available():
+            return "mps"
+    except Exception:
+        pass
+    return "cpu"
+
+
+@lru_cache(maxsize=1)
+def get_embeddings():
+    return HuggingFaceEmbeddings(
+        model_name=EMBEDDING_MODEL,
+        model_kwargs={"device": _embedding_device()},
+        encode_kwargs={"batch_size": int(os.getenv("EMBEDDING_QUERY_BATCH_SIZE", "32"))},
+    )
+
+
+@lru_cache(maxsize=1)
+def get_vectorstore():
+    return Chroma(
+        persist_directory=DB_DIR,
+        embedding_function=get_embeddings()
+    )
+
+
+@lru_cache(maxsize=16)
 def get_rag_chain(provider=None, model_name=None):
     """
     Sets up and returns the RAG chain.
     """
-    # 1. Load Embeddings
-    embeddings = HuggingFaceEmbeddings(
-        model_name=EMBEDDING_MODEL,
-        model_kwargs={'device': 'cpu'} # Force CPU to save GPU memory for Ollama
-    )
-    
-    # 2. Load Vector Store
-    vectorstore = Chroma(
-        persist_directory=DB_DIR,
-        embedding_function=embeddings
-    )
-    
-    # 3. Initialize LLM
+    vectorstore = get_vectorstore()
     llm = get_llm(provider=provider, model_name=model_name)
-    
-    # 4. Define Prompt
+
     system_prompt = (
         "You are a strict investigative assistant dedicated ONLY to analyzing the Jeffrey Epstein court documents. "
         "Your PRIMARY RULE: You must ONLY answer questions based on the provided retrieved context. "
@@ -57,11 +77,13 @@ def get_rag_chain(provider=None, model_name=None):
         ]
     )
     
-    # 5. Create Chain
     combine_docs_chain = create_stuff_documents_chain(llm, prompt)
     retriever = vectorstore.as_retriever(
         search_type="mmr", # Max Marginal Relevance for diversity
-        search_kwargs={"k": 10, "fetch_k": 20}
+        search_kwargs={
+            "k": int(os.getenv("RETRIEVER_K", "12")),
+            "fetch_k": int(os.getenv("RETRIEVER_FETCH_K", "80")),
+        }
     )
     
     rag_chain = create_retrieval_chain(retriever, combine_docs_chain)

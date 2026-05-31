@@ -1,0 +1,25 @@
+services:
+  epstein-rag:
+    build: .
+    ports:
+      - "8501:8501"
+    environment:
+      LLM_PROVIDER: OMLX
+      OMLX_BASE_URL: http://host.docker.internal:1234/v1
+      OMLX_MODEL: Gemma4-MTP-26B-BF16
+      OMLX_SETTINGS_PATH: /run/secrets/omlx_settings
+      DATA_PATH: /app/data
+      DB_PATH: /app/chroma_db
+      EMBEDDING_DEVICE: cpu
+      RETRIEVER_K: "12"
+      RETRIEVER_FETCH_K: "80"
+    volumes:
+      - ./data:/app/data
+      - ./chroma_db:/app/chroma_db
+      - ./.cache:/app/.cache
+    secrets:
+      - omlx_settings
+
+secrets:
+  omlx_settings:
+    file: ${HOME}/.omlx/settings.json
