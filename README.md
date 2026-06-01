@@ -132,8 +132,10 @@ without failing the command. Use `scripts/final_audit.sh --json` for
 machine-readable gate output.
 
 For unattended completion, run `make wait`. It prints progress on an interval
-and automatically runs final validation when the manifest shows all files are
-indexed. Set `RUN_FINAL_VALIDATE=0 make wait` to only wait and report completion.
+and automatically runs the full final audit when the manifest shows all files
+are indexed. Set `RUN_FINAL_AUDIT=0 make wait` to run only the older final RAG
+validation path, or `RUN_FINAL_AUDIT=0 RUN_FINAL_VALIDATE=0 make wait` to only
+wait and report completion.
 
 ### Docker
 The app can run in Docker Compose and connect back to host oMLX:
