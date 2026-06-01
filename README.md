@@ -18,24 +18,30 @@ An open-source Retrieval-Augmented Generation (RAG) platform to explore and anal
 This fork is tuned for Apple Silicon and local oMLX:
 
 ```bash
-cp .env.example .env
-python3.11 -m venv .venv
-.venv/bin/python -m pip install -r requirements.txt
-.venv/bin/python ingest.py --num-files 1
-.venv/bin/python -m streamlit run app.py
+scripts/setup_macos.sh
+make doctor
+make download
+make index
+make run
 ```
 
 For the full dataset:
 
 ```bash
-.venv/bin/python ingest.py --all --download-only
-.venv/bin/python ingest.py --all --skip-download --embedding-device mps
+make download
+make index
 ```
 
 Or use the native helper:
 
 ```bash
 EMBEDDING_DEVICE=auto scripts/index_full_native.sh
+```
+
+If you already have the full dataset elsewhere, link it during setup:
+
+```bash
+SOURCE_DATA_DIR=/path/to/data scripts/setup_macos.sh
 ```
 
 The ingester is resumable. It records completed parquet files in
@@ -60,6 +66,9 @@ scripts/validate_rag.sh
 scripts/validate_rag.sh --rag
 scripts/benchmark.sh
 ```
+
+The same commands are exposed as Make targets: `make status`, `make progress`,
+`make validate`, `make validate-rag`, `make benchmark`, and `make test`.
 
 Useful ingestion tuning knobs:
 
