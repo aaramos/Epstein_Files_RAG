@@ -54,6 +54,16 @@ class ShellScriptTests(unittest.TestCase):
         self.assertIn('if [[ "$PROGRESS_STATUS" != "0" ]]', script)
         self.assertIn('exit "$PROGRESS_STATUS"', script)
 
+    def test_wait_can_notify_macos_on_completion(self):
+        script = (ROOT / "scripts" / "wait_for_index.sh").read_text()
+
+        self.assertIn('MACOS_NOTIFY_ON_COMPLETE="${MACOS_NOTIFY_ON_COMPLETE:-0}"', script)
+        self.assertIn("notify_macos()", script)
+        self.assertIn("command -v osascript", script)
+        self.assertIn('notify_macos "Epstein RAG index complete"', script)
+        self.assertIn('notify_macos "Epstein RAG validation failed"', script)
+        self.assertIn('notify_macos "Epstein RAG index stalled"', script)
+
     def test_check_runs_final_audit_after_complete_index(self):
         script = (ROOT / "scripts" / "check_all.sh").read_text()
 

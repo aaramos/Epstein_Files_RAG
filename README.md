@@ -181,7 +181,9 @@ or when progress becomes stale, then `make wait` exits with the validation or
 progress status. Set
 `RUN_FINAL_AUDIT=0 make wait` to run only the older final RAG validation path, or
 `RUN_FINAL_AUDIT=0 RUN_FINAL_VALIDATE=0 make wait` to only wait and report
-completion.
+completion. Set `MACOS_NOTIFY_ON_COMPLETE=1 make wait` to show a macOS
+notification when the unattended run completes, fails validation, or detects
+stale progress.
 
 ### Docker
 The app can run in Docker Compose and connect back to host oMLX:

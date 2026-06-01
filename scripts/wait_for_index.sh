@@ -7,6 +7,19 @@ INTERVAL_SECONDS="${INTERVAL_SECONDS:-60}"
 RUN_FINAL_AUDIT="${RUN_FINAL_AUDIT:-1}"
 RUN_FINAL_VALIDATE="${RUN_FINAL_VALIDATE:-1}"
 RUN_COMPLETION_DIAGNOSTICS="${RUN_COMPLETION_DIAGNOSTICS:-1}"
+MACOS_NOTIFY_ON_COMPLETE="${MACOS_NOTIFY_ON_COMPLETE:-0}"
+
+notify_macos() {
+  local title="$1"
+  local message="$2"
+  if [[ "$MACOS_NOTIFY_ON_COMPLETE" != "1" ]]; then
+    return 0
+  fi
+  if ! command -v osascript >/dev/null 2>&1; then
+    return 0
+  fi
+  osascript -e "display notification \"${message}\" with title \"${title}\"" >/dev/null 2>&1 || true
+}
 
 while true; do
   set +e
@@ -17,6 +30,7 @@ while true; do
     if [[ "$RUN_COMPLETION_DIAGNOSTICS" == "1" ]]; then
       scripts/collect_diagnostics.sh
     fi
+    notify_macos "Epstein RAG index stalled" "Progress check failed with status ${PROGRESS_STATUS}."
     exit "$PROGRESS_STATUS"
   fi
 
@@ -36,6 +50,11 @@ PY
     fi
     if [[ "$RUN_COMPLETION_DIAGNOSTICS" == "1" ]]; then
       scripts/collect_diagnostics.sh
+    fi
+    if [[ "$VALIDATION_STATUS" == "0" ]]; then
+      notify_macos "Epstein RAG index complete" "Full index and validation completed successfully."
+    else
+      notify_macos "Epstein RAG validation failed" "Full index completed, but validation failed with status ${VALIDATION_STATUS}."
     fi
     exit "$VALIDATION_STATUS"
   fi
