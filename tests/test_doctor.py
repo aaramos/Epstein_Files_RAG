@@ -39,6 +39,22 @@ class DoctorTests(unittest.TestCase):
         status.assert_any_call("Docker assets", True, "docker ok")
         status.assert_any_call("LaunchAgent templates", True, "launchd ok")
 
+    def test_check_data_index_reports_progress_freshness(self):
+        index_status = Mock(
+            downloaded_files=2,
+            expected_files=2,
+            indexed_files=1,
+            in_progress_files=1,
+            indexed_chunks=10,
+            indexing_active=True,
+        )
+        with patch.object(doctor, "read_index_status", return_value=index_status), patch.object(
+            doctor, "check_index_progress", return_value=(True, "fresh")
+        ), patch.object(doctor, "status") as status:
+            doctor.check_data_index()
+
+        status.assert_any_call("Index progress", True, "fresh")
+
 
 if __name__ == "__main__":
     unittest.main()

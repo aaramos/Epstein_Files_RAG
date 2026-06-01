@@ -22,7 +22,7 @@ MANIFEST_PATH = Path(os.getenv("INGEST_MANIFEST_PATH", str(DB_DIR / "ingest_mani
 
 from index_state import load_manifest, read_index_status
 from llm_factory import get_omlx_base_url, get_omlx_model_name
-from final_audit import check_docker_assets, run_launchd_validation
+from final_audit import check_docker_assets, check_index_progress, run_launchd_validation
 
 
 def status(label: str, ok: bool, detail: str) -> None:
@@ -104,6 +104,8 @@ def check_data_index() -> None:
     index_status = read_index_status(data_dir=DATA_DIR, manifest_path=MANIFEST_PATH, root=ROOT)
     status("Dataset", index_status.downloaded_files == index_status.expected_files, f"{index_status.downloaded_files}/{index_status.expected_files} parquet files")
     status("Chroma index", bool(index_status.indexed_files), f"{index_status.indexed_files}/{index_status.expected_files} files, {index_status.in_progress_files} in progress, {index_status.indexed_chunks:,} chunks")
+    progress_ok, progress_detail = check_index_progress(index_status.indexing_active)
+    status("Index progress", progress_ok, progress_detail)
 
 
 def disk_space_status(path: Path, min_free_gb: float) -> tuple[bool, str]:
