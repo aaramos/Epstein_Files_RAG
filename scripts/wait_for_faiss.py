@@ -17,6 +17,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Wait for FAISS index completion and optionally validate retrieval.")
     parser.add_argument("--path", default="./faiss_index")
     parser.add_argument("--chroma-manifest", default="./chroma_db/ingest_manifest.json")
+    parser.add_argument("--pid-file", default="./runtime/faiss_build.pid")
     parser.add_argument("--interval", type=int, default=60)
     parser.add_argument("--once", action="store_true", help="Print one status update and exit.")
     parser.add_argument("--validate", action="store_true", help="Run scripts/validate_faiss.py when complete.")
@@ -31,6 +32,10 @@ def print_status(data: dict) -> None:
         print(f"FAISS: {chunks:,}/{expected:,} chunks ({chunks / expected:.1%}), complete={complete}", flush=True)
     else:
         print(f"FAISS: {chunks:,} chunks, complete={complete}", flush=True)
+    if data.get("chunks_per_second"):
+        print(f"Rate: {data['chunks_per_second']:.1f} chunks/sec", flush=True)
+    if data.get("eta_seconds"):
+        print(f"ETA: {data['eta_seconds'] / 3600:.1f} hours", flush=True)
     if data.get("last_source"):
         print(f"Latest source: {data['last_source']} ({data.get('last_source_chunks', 0):,} chunks)", flush=True)
 
@@ -54,8 +59,9 @@ def main() -> None:
     args = parse_args()
     path = Path(args.path)
     chroma_manifest = Path(args.chroma_manifest)
+    pid_path = Path(args.pid_file)
     while True:
-        data = payload(path, chroma_manifest)
+        data = payload(path, chroma_manifest, pid_path)
         print_status(data)
         if args.once:
             return
