@@ -270,6 +270,7 @@ class FinalAuditTests(unittest.TestCase):
             final_audit,
             "progress_payload",
             return_value={
+                "data": {"path": "data", "resolved_path": "/real/data", "size_human": "317.2 GB"},
                 "rate_files_per_minute": 2.5,
                 "eta_seconds": 120,
                 "eta_at_utc": "2026-06-01T04:00:00+00:00",
@@ -286,6 +287,7 @@ class FinalAuditTests(unittest.TestCase):
         self.assertEqual(payload["index"]["missing_indexed_files"], 1)
         self.assertEqual(payload["index"]["missing_indexed_sample"], ["epstein_files-0001.parquet"])
         self.assertEqual(payload["index"]["unexpected_indexed_sample"], [])
+        self.assertEqual(payload["progress"]["data"]["size_human"], "317.2 GB")
         self.assertEqual(payload["progress"]["rate_files_per_minute"], 2.5)
         self.assertEqual(payload["progress"]["eta_at_local"], "2026-05-31T21:00:00-07:00")
         full_index_gate = next(gate for gate in payload["gates"] if gate["key"] == "full_index")

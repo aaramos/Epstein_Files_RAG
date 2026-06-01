@@ -83,6 +83,7 @@ def json_file(name):
 
 progress = json_file("progress.json") or {}
 final_audit = json_file("final_audit.json") or {}
+data = progress.get("data") or {}
 
 files = sorted(path.name for path in out_dir.iterdir() if path.is_file() and path.name != "manifest.json")
 payload = {
@@ -95,6 +96,9 @@ payload = {
         "indexed_files": progress.get("indexed_files"),
         "expected_files": progress.get("expected_files"),
         "indexed_fraction": progress.get("indexed_fraction"),
+        "data_path": data.get("path"),
+        "data_resolved_path": data.get("resolved_path"),
+        "data_size_human": data.get("size_human"),
         "eta_at_local": progress.get("eta_at_local"),
         "eta_at_utc": progress.get("eta_at_utc"),
         "final_audit_complete": final_audit.get("complete"),

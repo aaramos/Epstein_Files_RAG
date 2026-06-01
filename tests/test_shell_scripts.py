@@ -45,6 +45,7 @@ class ShellScriptTests(unittest.TestCase):
         self.assertIn('progress = json_file("progress.json") or {}', script)
         self.assertIn('final_audit = json_file("final_audit.json") or {}', script)
         self.assertIn('"index_complete": progress.get("complete")', script)
+        self.assertIn('"data_size_human": data.get("size_human")', script)
         self.assertIn('"eta_at_local": progress.get("eta_at_local")', script)
         self.assertIn('"final_audit_complete": final_audit.get("complete")', script)
         self.assertIn('"skipped_gates": final_audit.get("skipped_gates")', script)
