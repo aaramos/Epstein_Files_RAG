@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import argparse
+import json
 import os
 import sys
 from datetime import datetime, timezone
@@ -15,6 +17,12 @@ from index_state import default_manifest_path, load_manifest, read_index_status
 
 LOG_PATH = Path(os.getenv("INDEX_LOG_PATH", str(ROOT / "runtime" / "index_full.log")))
 STALE_SECONDS = int(os.getenv("INDEX_STALE_SECONDS", "600"))
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Report local download and Chroma index progress.")
+    parser.add_argument("--json", action="store_true", help="Emit machine-readable JSON.")
+    return parser.parse_args()
 
 
 def parse_time(value: str | None) -> datetime | None:
@@ -46,7 +54,7 @@ def file_age_seconds(path: Path, now: datetime) -> float | None:
         return None
 
 
-def main() -> None:
+def progress_payload() -> dict:
     manifest = load_manifest(default_manifest_path(ROOT))
     status = read_index_status(root=ROOT)
     completed = manifest.get("completed_files", {})
@@ -70,22 +78,57 @@ def main() -> None:
     rate = status.indexed_files / elapsed if elapsed and elapsed > 0 else None
     remaining = max(0, status.expected_files - status.indexed_files)
     eta = remaining / rate if rate else None
-
-    print(f"Downloaded files: {status.downloaded_files}/{status.expected_files}")
-    print(f"Indexed files: {status.indexed_files}/{status.expected_files} ({status.indexed_files / status.expected_files:.1%})")
-    print(f"In progress: {', '.join(status.in_progress_names) if status.in_progress_names else 'none'}")
-    print(f"Indexed documents: {status.indexed_docs:,}")
-    print(f"Indexed chunks: {status.indexed_chunks:,}")
-    print(f"Elapsed: {human_duration(elapsed)}")
-    print(f"Rate: {rate * 60:.2f} files/min" if rate else "Rate: unknown")
-    print(f"ETA: {human_duration(eta)}")
-
     manifest_age = file_age_seconds(default_manifest_path(ROOT), now)
     log_age = file_age_seconds(LOG_PATH, now)
+    stale = bool(status.indexing_active and log_age is not None and log_age > STALE_SECONDS)
+
+    return {
+        "downloaded_files": status.downloaded_files,
+        "expected_files": status.expected_files,
+        "indexed_files": status.indexed_files,
+        "indexed_fraction": status.indexed_files / status.expected_files if status.expected_files else None,
+        "in_progress_files": status.in_progress_files,
+        "in_progress_names": list(status.in_progress_names),
+        "indexed_documents": status.indexed_docs,
+        "indexed_chunks": status.indexed_chunks,
+        "indexing_active": status.indexing_active,
+        "complete": status.complete,
+        "elapsed_seconds": elapsed,
+        "rate_files_per_minute": rate * 60 if rate else None,
+        "eta_seconds": eta,
+        "manifest_age_seconds": manifest_age,
+        "index_log_age_seconds": log_age,
+        "stale_seconds": STALE_SECONDS,
+        "stale": stale,
+    }
+
+
+def print_human(payload: dict) -> None:
+    print(f"Downloaded files: {payload['downloaded_files']}/{payload['expected_files']}")
+    indexed_fraction = payload["indexed_fraction"] or 0
+    print(f"Indexed files: {payload['indexed_files']}/{payload['expected_files']} ({indexed_fraction:.1%})")
+    print(f"In progress: {', '.join(payload['in_progress_names']) if payload['in_progress_names'] else 'none'}")
+    print(f"Indexed documents: {payload['indexed_documents']:,}")
+    print(f"Indexed chunks: {payload['indexed_chunks']:,}")
+    print(f"Elapsed: {human_duration(payload['elapsed_seconds'])}")
+    rate = payload["rate_files_per_minute"]
+    print(f"Rate: {rate:.2f} files/min" if rate else "Rate: unknown")
+    print(f"ETA: {human_duration(payload['eta_seconds'])}")
+    manifest_age = payload["manifest_age_seconds"]
+    log_age = payload["index_log_age_seconds"]
     print(f"Manifest updated: {human_duration(manifest_age)} ago" if manifest_age is not None else "Manifest updated: unknown")
     print(f"Index log updated: {human_duration(log_age)} ago" if log_age is not None else "Index log updated: unknown")
-    if status.indexing_active and log_age is not None and log_age > STALE_SECONDS:
+    if payload["stale"]:
         print(f"Warning: index log has been quiet for more than {human_duration(STALE_SECONDS)}")
+
+
+def main() -> None:
+    args = parse_args()
+    payload = progress_payload()
+    if args.json:
+        print(json.dumps(payload, indent=2, sort_keys=True))
+        return
+    print_human(payload)
 
 
 if __name__ == "__main__":

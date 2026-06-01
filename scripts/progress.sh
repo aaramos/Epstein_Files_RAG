@@ -3,4 +3,4 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
-exec .venv/bin/python scripts/progress.py
+exec .venv/bin/python scripts/progress.py "$@"
