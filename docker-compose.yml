@@ -19,6 +19,12 @@ services:
       - ./.cache:/app/.cache
     secrets:
       - omlx_settings
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8501/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
 
 secrets:
   omlx_settings:

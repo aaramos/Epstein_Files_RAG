@@ -139,6 +139,9 @@ default because that file captures the native Mac Studio environment, not the
 Linux container runtime. To force a constraint file for a custom build, pass
 `--build-arg PIP_CONSTRAINT_FILE=<file>`.
 
+The image and Compose service include a Streamlit HTTP health check on port
+`8501`, so container runtimes can report when the app is actually serving.
+
 ### macOS LaunchAgent Templates
 Example LaunchAgent plists live in `launchd/`:
 

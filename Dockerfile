@@ -25,4 +25,7 @@ COPY . .
 
 EXPOSE 8501
 
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
+    CMD curl -fsS http://127.0.0.1:8501/ >/dev/null || exit 1
+
 CMD ["streamlit", "run", "app.py", "--server.address", "0.0.0.0", "--server.port", "8501"]
