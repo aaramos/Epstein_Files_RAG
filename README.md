@@ -77,6 +77,9 @@ This fork also includes `constraints-macos-arm64.txt`, a known-good constraints
 set captured from the working Mac Studio environment. `scripts/setup_macos.sh`
 uses it automatically when present.
 
+The Streamlit config uses polling file watching on macOS to avoid FSEvents
+startup failures seen in headless/local-service runs.
+
 `make check` intentionally skips extra retrieval/benchmark passes while the full
 indexer is actively writing to Chroma. Use `CHECK_DURING_INDEX=1 make check`
 only when you explicitly want to stress concurrent read/write behavior.
@@ -94,6 +97,9 @@ Useful local generation knobs:
 - `OMLX_MAX_TOKENS`: response cap for local oMLX calls.
 - `OMLX_TIMEOUT_SECONDS`: request timeout for local oMLX calls.
 - `LLM_TEMPERATURE`: shared temperature setting for all providers.
+- `APP_ALLOW_QUERY_DURING_INDEX`: defaults to `0` so the Streamlit app pauses
+  questions while Chroma is actively being written. Set it to `1` only if you
+  want to query the partial index during ingestion.
 
 After the full corpus finishes indexing, run `make final-validate`. It fails
 until all expected parquet files are indexed, then performs retrieval plus a

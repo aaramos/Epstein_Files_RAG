@@ -29,6 +29,13 @@ def index_status():
     return local_files, len(completed), len(in_progress), indexed_docs, indexed_chunks
 
 
+def env_flag(name, default=False):
+    value = os.getenv(name)
+    if value is None:
+        return default
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
 # Page configuration
 st.set_page_config(
     page_title="Epstein Files RAG Explorer",
@@ -72,6 +79,9 @@ if api_key:
         os.environ["OPENROUTER_API_KEY"] = api_key
 
 local_files, indexed_files, in_progress_files, indexed_docs, indexed_chunks = index_status()
+allow_query_during_index = env_flag("APP_ALLOW_QUERY_DURING_INDEX")
+indexing_active = in_progress_files > 0
+query_enabled = bool(indexed_chunks) and (allow_query_during_index or not indexing_active)
 st.sidebar.divider()
 st.sidebar.caption("Index Status")
 st.sidebar.metric("Downloaded files", local_files)
@@ -82,6 +92,8 @@ if indexed_chunks:
     st.sidebar.caption(f"{indexed_docs:,} documents / {indexed_chunks:,} chunks")
 if not indexed_chunks:
     st.sidebar.warning("Index is empty. Run `scripts/index_full_native.sh` before asking questions.")
+elif indexing_active and not allow_query_during_index:
+    st.sidebar.warning("Questions are paused while the indexer is writing to Chroma. Set APP_ALLOW_QUERY_DURING_INDEX=1 to allow partial-index queries.")
 elif local_files and indexed_files < local_files:
     st.sidebar.info("The app can answer from the partial index while full indexing continues.")
 
@@ -120,7 +132,7 @@ if not st.session_state.messages:
     
     cols = st.columns(2)
     for i, q in enumerate(questions):
-        if cols[i % 2].button(q, use_container_width=True):
+        if cols[i % 2].button(q, use_container_width=True, disabled=not query_enabled):
             # Simulate user input
             st.session_state.messages.append({"role": "user", "content": q})
             
@@ -156,7 +168,7 @@ if not st.session_state.messages:
                         st.error(f"Error: {e}")
 
 # User Input
-if prompt := st.chat_input("Ask a question about the Epstein documents..."):
+if prompt := st.chat_input("Ask a question about the Epstein documents...", disabled=not query_enabled):
     # Clear session if provider/model changed? (Simplified here)
     
     # Add user message to history
