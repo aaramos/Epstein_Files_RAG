@@ -6,6 +6,7 @@ cd "$(dirname "$0")/.."
 INTERVAL_SECONDS="${INTERVAL_SECONDS:-60}"
 RUN_FINAL_AUDIT="${RUN_FINAL_AUDIT:-1}"
 RUN_FINAL_VALIDATE="${RUN_FINAL_VALIDATE:-1}"
+RUN_COMPLETION_DIAGNOSTICS="${RUN_COMPLETION_DIAGNOSTICS:-1}"
 
 while true; do
   .venv/bin/python scripts/progress.py --fail-stale
@@ -22,6 +23,9 @@ PY
       scripts/final_audit.sh
     elif [[ "$RUN_FINAL_VALIDATE" == "1" ]]; then
       scripts/validate_rag.sh --require-full-index --rag
+    fi
+    if [[ "$RUN_COMPLETION_DIAGNOSTICS" == "1" ]]; then
+      scripts/collect_diagnostics.sh
     fi
     exit 0
   fi
