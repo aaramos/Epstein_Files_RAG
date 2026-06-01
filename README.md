@@ -122,7 +122,9 @@ handoffs can tell which path was used, plus a summary of index progress, source
 dataset size, Chroma index size, ETA, and skipped gates.
 
 The same commands are exposed as Make targets: `make status`, `make progress`,
-`make wait`, `make validate`, `make validate-rag`, `make final-validate`,
+`make watch`, `make partial-audit`, `make partial-audit-json`, `make wait`,
+`make wait-notify`, `make validate`, `make validate-rag`,
+`make final-validate`, `make final-audit`, `make diagnostics`,
 `make benchmark`, `make test`, and `make check`.
 
 This fork also includes `constraints-macos-arm64.txt`, a known-good constraints
