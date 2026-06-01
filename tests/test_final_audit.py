@@ -265,6 +265,29 @@ class FinalAuditTests(unittest.TestCase):
         self.assertTrue(ok)
         self.assertIn("complete", detail)
 
+    def test_check_chroma_backend_accepts_readable_caught_up_index(self):
+        with patch.object(
+            final_audit,
+            "inspect_chroma",
+            return_value={"embeddings": 10, "vector_gap": 0, "vector_caught_up": True},
+        ), patch.object(final_audit, "validate_reader") as reader:
+            ok, detail = final_audit.check_chroma_backend()
+
+        self.assertTrue(ok)
+        self.assertIn("readable", detail)
+        reader.assert_called_once_with(final_audit.DB_DIR, 10)
+
+    def test_check_chroma_backend_rejects_vector_gap(self):
+        with patch.object(
+            final_audit,
+            "inspect_chroma",
+            return_value={"embeddings": 10, "vector_gap": 2, "vector_caught_up": False},
+        ):
+            ok, detail = final_audit.check_chroma_backend()
+
+        self.assertFalse(ok)
+        self.assertIn("not caught up", detail)
+
     def test_audit_payload_reports_incomplete_index(self):
         status = IndexStatus(
             downloaded_files=2,
@@ -284,6 +307,8 @@ class FinalAuditTests(unittest.TestCase):
             final_audit, "check_index_progress", return_value=(True, "progress ok")
         ), patch.object(
             final_audit, "check_disk_space", return_value=(True, "disk ok")
+        ), patch.object(
+            final_audit, "check_chroma_backend", return_value=(True, "chroma ok")
         ), patch.object(
             final_audit, "check_faiss_backend", return_value=(True, "faiss ok")
         ), patch.object(
@@ -341,6 +366,8 @@ class FinalAuditTests(unittest.TestCase):
         ), patch.object(
             final_audit, "check_disk_space", return_value=(True, "disk ok")
         ), patch.object(
+            final_audit, "check_chroma_backend", return_value=(True, "chroma ok")
+        ), patch.object(
             final_audit, "check_faiss_backend", return_value=(True, "faiss ok")
         ), patch.object(
             final_audit, "check_docker_assets", return_value=(True, "docker ok")
@@ -376,6 +403,8 @@ class FinalAuditTests(unittest.TestCase):
         ), patch.object(
             final_audit, "check_disk_space", return_value=(True, "disk ok")
         ), patch.object(
+            final_audit, "check_chroma_backend", return_value=(True, "chroma ok")
+        ), patch.object(
             final_audit, "check_faiss_backend", return_value=(True, "faiss ok")
         ), patch.object(
             final_audit, "check_docker_assets", return_value=(True, "docker ok")
@@ -410,6 +439,8 @@ class FinalAuditTests(unittest.TestCase):
             final_audit, "check_index_progress", return_value=(True, "progress ok")
         ), patch.object(
             final_audit, "check_disk_space", return_value=(True, "disk ok")
+        ), patch.object(
+            final_audit, "check_chroma_backend", return_value=(True, "chroma ok")
         ), patch.object(
             final_audit, "check_faiss_backend", return_value=(True, "faiss ok")
         ), patch.object(

@@ -22,6 +22,8 @@ from index_lock import process_alive, read_lock, release_stale_lock
 from llm_factory import _get_omlx_api_key, get_omlx_base_url, get_omlx_model_name
 from faiss_progress import payload as faiss_progress_payload
 from progress import human_duration, progress_payload, stale_failure_reason
+from validate_chroma import validate_diagnostics, validate_reader
+from chroma_vector_diagnostics import inspect_chroma
 
 
 DB_DIR = Path(os.getenv("DB_PATH", str(ROOT / "chroma_db")))
@@ -174,6 +176,19 @@ def check_faiss_backend() -> tuple[bool, str]:
     return True, f"FAISS complete with {chunks:,} chunks"
 
 
+def check_chroma_backend() -> tuple[bool, str]:
+    try:
+        data = inspect_chroma(DB_DIR)
+        validate_diagnostics(data)
+        validate_reader(DB_DIR, int(data["embeddings"]))
+    except SystemExit as exc:
+        detail = str(exc) or "Chroma validation failed"
+        return False, detail
+    except Exception as exc:
+        return False, f"Chroma reader failed: {exc}"
+    return True, f"Chroma HNSW readable with {int(data['embeddings']):,} vectors"
+
+
 def print_gate(ok: bool, label: str, detail: str) -> None:
     marker = "OK" if ok else "WAIT"
     print(f"[{marker}] {label}: {detail}")
@@ -212,6 +227,9 @@ def audit_payload(skip_app: bool = False, skip_rag: bool = False) -> dict:
 
     disk_ok, disk_detail = check_disk_space()
     add_gate(gates, "disk_space", "Disk space", disk_ok, disk_detail)
+
+    chroma_ok, chroma_detail = check_chroma_backend()
+    add_gate(gates, "chroma_backend", "Chroma backend", chroma_ok, chroma_detail)
 
     faiss_ok, faiss_detail = check_faiss_backend()
     add_gate(gates, "faiss_backend", "FAISS backend", faiss_ok, faiss_detail)
