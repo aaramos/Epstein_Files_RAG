@@ -8,15 +8,9 @@ cd "$(dirname "$0")/.."
 scripts/doctor.sh
 
 if .venv/bin/python - <<'PY'
-import json
-from pathlib import Path
+from index_state import read_index_status
 
-path = Path("chroma_db/ingest_manifest.json")
-try:
-    manifest = json.loads(path.read_text())
-except (OSError, json.JSONDecodeError):
-    raise SystemExit(1)
-raise SystemExit(0 if manifest.get("in_progress") else 1)
+raise SystemExit(0 if read_index_status().indexing_active else 1)
 PY
 then
   echo "Full indexing is active; skipping extra retrieval/benchmark checks to avoid concurrent Chroma read/write pressure."

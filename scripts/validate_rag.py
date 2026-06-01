@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import argparse
-import json
 import os
 import sys
 from pathlib import Path
@@ -12,11 +11,11 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from index_state import DEFAULT_EXPECTED_FILES, read_index_status
 from rag_chain import get_rag_chain, get_vectorstore
 
 
 DEFAULT_QUERY = "What is the name of the aircraft used by Epstein?"
-DEFAULT_EXPECTED_FILES = 634
 
 
 def parse_args() -> argparse.Namespace:
@@ -32,17 +31,10 @@ def parse_args() -> argparse.Namespace:
 
 
 def validate_full_index(expected_files: int) -> None:
-    manifest_path = Path(os.getenv("INGEST_MANIFEST_PATH", str(ROOT / "chroma_db" / "ingest_manifest.json")))
-    try:
-        manifest = json.loads(manifest_path.read_text())
-    except (OSError, json.JSONDecodeError) as exc:
-        raise SystemExit(f"Could not read ingest manifest at {manifest_path}: {exc}") from exc
-
-    completed = manifest.get("completed_files", {})
-    in_progress = manifest.get("in_progress", {})
-    print(f"Indexed files: {len(completed)}/{expected_files}")
-    print(f"In-progress files: {len(in_progress)}")
-    if len(completed) < expected_files or in_progress:
+    status = read_index_status(expected_count=expected_files, root=ROOT)
+    print(f"Indexed files: {status.indexed_files}/{expected_files}")
+    print(f"In-progress files: {status.in_progress_files}")
+    if not status.complete:
         raise SystemExit("Full index is not complete yet")
 
 

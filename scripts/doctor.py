@@ -17,6 +17,8 @@ DB_DIR = Path(os.getenv("DB_PATH", str(ROOT / "chroma_db")))
 MANIFEST_PATH = Path(os.getenv("INGEST_MANIFEST_PATH", str(DB_DIR / "ingest_manifest.json")))
 OMLX_BASE_URL = os.getenv("MORNING_DISPATCH_MODEL_BASE_URL") or os.getenv("OMLX_BASE_URL", "http://127.0.0.1:1234/v1")
 
+from index_state import load_manifest, read_index_status
+
 
 def status(label: str, ok: bool, detail: str) -> None:
     marker = "OK" if ok else "WARN"
@@ -36,10 +38,7 @@ def read_omlx_key() -> str | None:
         if value:
             return value
     settings_path = Path(os.getenv("OMLX_SETTINGS_PATH", "~/.omlx/settings.json")).expanduser()
-    try:
-        return json.loads(settings_path.read_text()).get("auth", {}).get("api_key")
-    except (OSError, json.JSONDecodeError):
-        return None
+    return load_manifest(settings_path).get("auth", {}).get("api_key")
 
 
 def check_python() -> None:
@@ -89,24 +88,13 @@ def check_omlx() -> None:
 
 
 def check_data_index() -> None:
-    parquet_count = len(list(DATA_DIR.glob("epstein_files-*.parquet")))
-    status("Dataset", parquet_count == 634, f"{parquet_count}/634 parquet files")
-    manifest = load_manifest()
-    completed = manifest.get("completed_files", {})
-    in_progress = manifest.get("in_progress", {})
-    chunks = sum(item.get("chunks", 0) for item in completed.values())
-    status("Chroma index", bool(completed), f"{len(completed)}/634 files, {len(in_progress)} in progress, {chunks:,} chunks")
-
-
-def load_manifest() -> dict:
-    try:
-        return json.loads(MANIFEST_PATH.read_text())
-    except (OSError, json.JSONDecodeError):
-        return {"completed_files": {}, "in_progress": {}}
+    index_status = read_index_status(data_dir=DATA_DIR, manifest_path=MANIFEST_PATH, root=ROOT)
+    status("Dataset", index_status.downloaded_files == index_status.expected_files, f"{index_status.downloaded_files}/{index_status.expected_files} parquet files")
+    status("Chroma index", bool(index_status.indexed_files), f"{index_status.indexed_files}/{index_status.expected_files} files, {index_status.in_progress_files} in progress, {index_status.indexed_chunks:,} chunks")
 
 
 def check_retrieval() -> None:
-    if load_manifest().get("in_progress"):
+    if read_index_status(data_dir=DATA_DIR, manifest_path=MANIFEST_PATH, root=ROOT).indexing_active:
         status("Retrieval", True, "skipped while indexing is active")
         return
     try:

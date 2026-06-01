@@ -1,9 +1,8 @@
 import os
 os.environ["USE_TORCH"] = "1" # Force PyTorch, disable TensorFlow
-import json
-from pathlib import Path
 import streamlit as st
 from dotenv import load_dotenv
+from index_state import env_flag, query_enabled as index_query_enabled, read_index_status
 from rag_chain import get_rag_chain
 
 load_dotenv()
@@ -12,28 +11,6 @@ load_dotenv()
 @st.cache_resource(show_spinner=False)
 def get_cached_rag_chain(provider, model_name):
     return get_rag_chain(provider=provider, model_name=model_name)
-
-
-def index_status():
-    data_dir = Path(os.getenv("DATA_PATH", "./data"))
-    manifest_path = Path(os.getenv("INGEST_MANIFEST_PATH", "./chroma_db/ingest_manifest.json"))
-    local_files = len(list(data_dir.glob("epstein_files-*.parquet")))
-    try:
-        manifest = json.loads(manifest_path.read_text())
-    except (OSError, json.JSONDecodeError):
-        manifest = {"completed_files": {}}
-    completed = manifest.get("completed_files", {})
-    in_progress = manifest.get("in_progress", {})
-    indexed_docs = sum(item.get("documents", 0) for item in completed.values())
-    indexed_chunks = sum(item.get("chunks", 0) for item in completed.values())
-    return local_files, len(completed), len(in_progress), indexed_docs, indexed_chunks
-
-
-def env_flag(name, default=False):
-    value = os.getenv(name)
-    if value is None:
-        return default
-    return value.strip().lower() in {"1", "true", "yes", "on"}
 
 
 # Page configuration
@@ -78,23 +55,22 @@ if api_key:
     elif provider == "OPENROUTER":
         os.environ["OPENROUTER_API_KEY"] = api_key
 
-local_files, indexed_files, in_progress_files, indexed_docs, indexed_chunks = index_status()
+index_status = read_index_status()
 allow_query_during_index = env_flag("APP_ALLOW_QUERY_DURING_INDEX")
-indexing_active = in_progress_files > 0
-query_enabled = bool(indexed_chunks) and (allow_query_during_index or not indexing_active)
+query_enabled = index_query_enabled(index_status, allow_query_during_index)
 st.sidebar.divider()
 st.sidebar.caption("Index Status")
-st.sidebar.metric("Downloaded files", local_files)
-st.sidebar.metric("Indexed files", indexed_files)
-if in_progress_files:
-    st.sidebar.caption(f"{in_progress_files} file(s) currently indexing")
-if indexed_chunks:
-    st.sidebar.caption(f"{indexed_docs:,} documents / {indexed_chunks:,} chunks")
-if not indexed_chunks:
+st.sidebar.metric("Downloaded files", index_status.downloaded_files)
+st.sidebar.metric("Indexed files", index_status.indexed_files)
+if index_status.in_progress_files:
+    st.sidebar.caption(f"{index_status.in_progress_files} file(s) currently indexing")
+if index_status.indexed_chunks:
+    st.sidebar.caption(f"{index_status.indexed_docs:,} documents / {index_status.indexed_chunks:,} chunks")
+if not index_status.indexed_chunks:
     st.sidebar.warning("Index is empty. Run `scripts/index_full_native.sh` before asking questions.")
-elif indexing_active and not allow_query_during_index:
+elif index_status.indexing_active and not allow_query_during_index:
     st.sidebar.warning("Questions are paused while the indexer is writing to Chroma. Set APP_ALLOW_QUERY_DURING_INDEX=1 to allow partial-index queries.")
-elif local_files and indexed_files < local_files:
+elif index_status.downloaded_files and index_status.indexed_files < index_status.downloaded_files:
     st.sidebar.info("The app can answer from the partial index while full indexing continues.")
 
 # Main UI
