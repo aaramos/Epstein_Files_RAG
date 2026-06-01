@@ -68,7 +68,16 @@ scripts/benchmark.sh
 ```
 
 The same commands are exposed as Make targets: `make status`, `make progress`,
-`make validate`, `make validate-rag`, `make benchmark`, and `make test`.
+`make validate`, `make validate-rag`, `make benchmark`, `make test`, and
+`make check`.
+
+This fork also includes `constraints-macos-arm64.txt`, a known-good constraints
+set captured from the working Mac Studio environment. `scripts/setup_macos.sh`
+uses it automatically when present.
+
+`make check` intentionally skips extra retrieval/benchmark passes while the full
+indexer is actively writing to Chroma. Use `CHECK_DURING_INDEX=1 make check`
+only when you explicitly want to stress concurrent read/write behavior.
 
 Useful ingestion tuning knobs:
 

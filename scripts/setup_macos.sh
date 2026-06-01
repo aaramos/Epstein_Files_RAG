@@ -5,6 +5,7 @@ cd "$(dirname "$0")/.."
 
 PYTHON_BIN="${PYTHON_BIN:-python3.11}"
 SOURCE_DATA_DIR="${SOURCE_DATA_DIR:-}"
+CONSTRAINTS_FILE="${CONSTRAINTS_FILE:-constraints-macos-arm64.txt}"
 
 if ! command -v "$PYTHON_BIN" >/dev/null 2>&1; then
   echo "Python 3.11 is required. Set PYTHON_BIN=/path/to/python3.11 if needed." >&2
@@ -16,7 +17,11 @@ if [[ ! -d .venv ]]; then
 fi
 
 .venv/bin/python -m pip install --upgrade pip
-.venv/bin/python -m pip install -r requirements.txt
+if [[ -f "$CONSTRAINTS_FILE" ]]; then
+  .venv/bin/python -m pip install -r requirements.txt -c "$CONSTRAINTS_FILE"
+else
+  .venv/bin/python -m pip install -r requirements.txt
+fi
 
 mkdir -p runtime chroma_db .cache
 

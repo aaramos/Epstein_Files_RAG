@@ -1,6 +1,6 @@
 PYTHON ?= .venv/bin/python
 
-.PHONY: setup doctor status progress validate validate-rag benchmark test run index download docker-up
+.PHONY: setup doctor status progress validate validate-rag benchmark test check run index download docker-up
 
 setup:
 	scripts/setup_macos.sh
@@ -25,6 +25,9 @@ benchmark:
 
 test:
 	$(PYTHON) -m unittest discover -s tests
+
+check:
+	scripts/check_all.sh
 
 run:
 	scripts/run_native.sh
