@@ -1,6 +1,8 @@
 # <img src="logo.png" width="50" align="center"> Epstein Files RAG Explorer 🔍
 
-An open-source Retrieval-Augmented Generation (RAG) platform to explore and analyze the unsealed Jeffrey Epstein court documents. Built with LangChain, ChromaDB, and Streamlit.
+An open-source Retrieval-Augmented Generation (RAG) platform to explore and
+analyze the unsealed Jeffrey Epstein court documents. Built with LangChain,
+ChromaDB/FAISS retrieval, and Streamlit.
 
 ![Screenshot](pic.png)
 
@@ -129,6 +131,49 @@ The same commands are exposed as Make targets: `make status`, `make progress`,
 `make final-validate`, `make final-audit`, `make diagnostics`,
 `make benchmark`, `make test`, and `make check`.
 
+### Vector Backend Recovery
+This fork keeps the original Chroma index available, but also includes a
+Mac-safe FAISS HNSW backend for the full corpus. Use it when the Chroma HNSW
+segment cannot be read or compacted cleanly at this dataset size.
+
+Inspect the live Chroma vector/metadata state:
+
+```bash
+make chroma-vector
+```
+
+Build a replacement Chroma index into a separate directory with safer HNSW
+batch/sync defaults. This refuses to overwrite the live `chroma_db` directly:
+
+```bash
+CHROMA_REBUILD_DB_PATH=./chroma_db_rebuild scripts/rebuild_chroma_native.sh
+```
+
+Build and monitor the FAISS backend:
+
+```bash
+make build-faiss
+make faiss-progress
+make wait-faiss
+```
+
+`make faiss-progress` reports chunk count, completion state, latest source
+file, build rate, and ETA. `make wait-faiss` waits for the FAISS build to mark
+itself complete, then runs the FAISS readiness validation. A partial FAISS
+index is not used automatically.
+
+After FAISS validates, cut over explicitly:
+
+```bash
+make promote-faiss
+RETRIEVER_BACKEND=faiss FAISS_INDEX_DIR=./faiss_index scripts/run_native.sh
+```
+
+With `RETRIEVER_BACKEND=auto`, the app prefers a completed FAISS index when one
+is present. If FAISS is absent or incomplete and Chroma's vector segment is
+behind its metadata segment, retrieval falls back to SQLite full-text search so
+the app avoids the broken Chroma HNSW reader.
+
 This fork also includes `constraints-macos-arm64.txt`, a known-good constraints
 set captured from the working Mac Studio environment. `scripts/setup_macos.sh`
 uses it automatically when present.
@@ -148,9 +193,13 @@ the full Mac completion path.
 Useful ingestion tuning knobs:
 
 - `EMBEDDING_MODEL`: embedding model used for both ingestion and retrieval.
-  Keep this unchanged after indexing unless you rebuild Chroma.
+  Keep this unchanged after indexing unless you rebuild Chroma/FAISS.
 - `--row-batch-size`: parquet rows to stream at once.
 - `--batch-size`: chunks to embed/write to Chroma at once.
+- `CHROMA_HNSW_BATCH_SIZE` and `CHROMA_HNSW_SYNC_THRESHOLD`: defaults are set
+  to `256` for native rebuilds so Chroma persists smaller HNSW batches.
+- `FAISS_CHUNK_BATCH_SIZE`, `FAISS_HNSW_M`, `FAISS_NUM_THREADS`, and
+  `FAISS_INDEX_DIR`: tune FAISS indexing, search, and output location.
 - `--embedding-device mps`: request Apple Silicon acceleration for native runs.
   If PyTorch cannot initialize MPS on the current macOS/runtime, the app falls
   back to CPU automatically.
