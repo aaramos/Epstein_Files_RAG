@@ -1,6 +1,7 @@
 import importlib.util
 import json
 import os
+import shutil
 import tempfile
 import time
 import unittest
@@ -278,13 +279,18 @@ class ProgressTests(unittest.TestCase):
             subdir = db_dir / "segments"
             subdir.mkdir()
             (subdir / "segment.bin").write_bytes(b"de")
+            usage = shutil._ntuple_diskusage(total=100, used=40, free=60)
 
             with patch.dict(os.environ, {"DB_PATH": str(db_dir)}, clear=False):
-                payload = progress.index_storage_payload(root)
+                with patch.object(progress.shutil, "disk_usage", return_value=usage):
+                    payload = progress.index_storage_payload(root)
 
         self.assertEqual(payload["path"], str(db_dir))
         self.assertEqual(payload["size_bytes"], 5)
         self.assertEqual(payload["size_human"], "5 B")
+        self.assertEqual(payload["free_bytes"], 60)
+        self.assertEqual(payload["free_human"], "60 B")
+        self.assertEqual(payload["total_bytes"], 100)
 
 
 if __name__ == "__main__":

@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import shutil
 import subprocess
 import sys
 import time
@@ -114,10 +115,22 @@ def directory_size_bytes(path: Path) -> int | None:
 def index_storage_payload(root: Path = ROOT) -> dict:
     db_dir = Path(os.getenv("DB_PATH", str(root / "chroma_db")))
     size_bytes = directory_size_bytes(db_dir) if db_dir.exists() else None
+    disk_target = db_dir if db_dir.exists() else db_dir.parent
+    try:
+        usage = shutil.disk_usage(disk_target)
+        free_bytes = usage.free
+        total_bytes = usage.total
+    except OSError:
+        free_bytes = None
+        total_bytes = None
     return {
         "path": str(db_dir),
         "size_bytes": size_bytes,
         "size_human": human_size(size_bytes),
+        "free_bytes": free_bytes,
+        "free_human": human_size(free_bytes),
+        "total_bytes": total_bytes,
+        "total_human": human_size(total_bytes),
     }
 
 
@@ -298,6 +311,7 @@ def print_human(payload: dict) -> None:
     if index_storage:
         print(f"Index path: {index_storage.get('path')}")
         print(f"Index size: {index_storage.get('size_human', 'unknown')}")
+        print(f"Index volume free: {index_storage.get('free_human', 'unknown')} of {index_storage.get('total_human', 'unknown')}")
     print(f"Downloaded files: {payload['downloaded_files']}/{payload['expected_files']}")
     indexed_fraction = payload["indexed_fraction"] or 0
     print(f"Indexed files: {payload['indexed_files']}/{payload['expected_files']} ({indexed_fraction:.1%})")

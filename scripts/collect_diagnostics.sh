@@ -102,6 +102,7 @@ payload = {
         "data_size_human": data.get("size_human"),
         "index_path": index_storage.get("path"),
         "index_size_human": index_storage.get("size_human"),
+        "index_free_human": index_storage.get("free_human"),
         "eta_at_local": progress.get("eta_at_local"),
         "eta_at_utc": progress.get("eta_at_utc"),
         "final_audit_complete": final_audit.get("complete"),
