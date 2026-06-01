@@ -45,6 +45,14 @@ class ShellScriptTests(unittest.TestCase):
         self.assertIn("scripts/collect_diagnostics.sh", script)
         self.assertIn('exit "$VALIDATION_STATUS"', script)
 
+    def test_check_runs_final_audit_after_complete_index(self):
+        script = (ROOT / "scripts" / "check_all.sh").read_text()
+
+        self.assertIn("Full index is not complete", script)
+        self.assertIn("scripts/validate_rag.sh --min-docs 3", script)
+        self.assertIn("scripts/benchmark.sh", script)
+        self.assertIn("scripts/final_audit.sh", script)
+
 
 if __name__ == "__main__":
     unittest.main()

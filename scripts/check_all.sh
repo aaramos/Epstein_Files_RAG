@@ -25,3 +25,4 @@ fi
 
 scripts/validate_rag.sh --min-docs 3
 scripts/benchmark.sh
+scripts/final_audit.sh
