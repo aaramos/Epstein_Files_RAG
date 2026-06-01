@@ -19,11 +19,17 @@ run_capture() {
   } >"${OUT_DIR}/${name}.txt" 2>&1 || true
 }
 
+run_raw_capture() {
+  local name="$1"
+  shift
+  "$@" >"${OUT_DIR}/${name}.json" 2>"${OUT_DIR}/${name}.err.txt" || true
+}
+
 run_capture progress scripts/progress.sh
-run_capture progress_json scripts/progress.sh --json
+run_raw_capture progress scripts/progress.sh --json
 run_capture doctor scripts/doctor.sh
 run_capture final_audit scripts/final_audit.sh --allow-incomplete --skip-app
-run_capture final_audit_json scripts/final_audit.sh --allow-incomplete --skip-app --json
+run_raw_capture final_audit scripts/final_audit.sh --allow-incomplete --skip-app --json
 run_capture launchd_status scripts/launchd_manage.sh status
 run_capture launchd_validate scripts/launchd_manage.sh validate
 
@@ -60,9 +66,9 @@ payload = {
     "git_branch": git_value("branch", "--show-current"),
     "files": files,
     "notes": [
-        "progress_json.txt contains machine-readable index progress",
+        "progress.json contains machine-readable index progress",
         "final_audit.txt contains current completion gate state",
-        "final_audit_json.txt contains machine-readable completion gates",
+        "final_audit.json contains machine-readable completion gates",
         "index_full.tail.log contains the latest indexer log lines when available",
     ],
 }

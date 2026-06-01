@@ -84,7 +84,8 @@ make diagnostics
 
 By default, diagnostics are written under `runtime/diagnostics/<timestamp>` and
 `runtime/diagnostics/latest` points to the newest bundle. Each bundle includes
-`manifest.json` with the source commit and file list.
+`manifest.json` with the source commit and file list. Machine-readable files
+such as `progress.json` and `final_audit.json` are written as plain JSON.
 
 The same commands are exposed as Make targets: `make status`, `make progress`,
 `make wait`, `make validate`, `make validate-rag`, `make final-validate`,
