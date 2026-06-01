@@ -38,6 +38,8 @@ then
   FINAL_AUDIT_MODE="full"
   run_capture final_audit scripts/final_audit.sh
   run_raw_capture final_audit scripts/final_audit.sh --json
+  run_capture benchmark scripts/benchmark.sh
+  run_raw_capture benchmark scripts/benchmark.sh --json
 else
   run_capture final_audit scripts/final_audit.sh --allow-incomplete --skip-app
   run_raw_capture final_audit scripts/final_audit.sh --allow-incomplete --skip-app --json
@@ -83,6 +85,7 @@ payload = {
         "progress.json contains machine-readable index progress",
         "final_audit.txt contains current completion gate state",
         "final_audit.json contains machine-readable completion gates",
+        "benchmark.json contains retrieval timing after full index completion when available",
         "index_full.tail.log contains the latest indexer log lines when available",
     ],
 }

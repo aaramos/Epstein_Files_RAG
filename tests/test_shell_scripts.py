@@ -35,6 +35,8 @@ class ShellScriptTests(unittest.TestCase):
         self.assertIn("final_audit_mode = sys.argv[3]", script)
         self.assertIn("read_index_status().complete", script)
         self.assertIn("run_capture final_audit scripts/final_audit.sh\n", script)
+        self.assertIn("run_capture benchmark scripts/benchmark.sh", script)
+        self.assertIn("run_raw_capture benchmark scripts/benchmark.sh --json", script)
         self.assertIn("run_capture final_audit scripts/final_audit.sh --allow-incomplete --skip-app", script)
 
     def test_wait_collects_diagnostics_after_validation_attempt(self):
