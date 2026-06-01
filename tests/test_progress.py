@@ -216,6 +216,32 @@ class ProgressTests(unittest.TestCase):
 
         self.assertIsNone(progress.stale_failure_reason(payload))
 
+    def test_watch_count_requires_watch(self):
+        with patch.object(progress.sys, "argv", ["progress.py", "--watch-count", "1"]):
+            with self.assertRaises(SystemExit) as raised:
+                progress.main()
+
+        self.assertIn("--watch-count requires --watch", str(raised.exception))
+
+    def test_watch_mode_stops_after_count(self):
+        payload = {
+            "complete": False,
+            "stale": False,
+            "indexer_process_missing": False,
+            "indexing_active": True,
+            "index_lock": {"present": True, "stale": False},
+        }
+
+        with patch.object(progress.sys, "argv", ["progress.py", "--watch", "1", "--watch-count", "2"]):
+            with patch.object(progress, "progress_payload", return_value=payload) as payload_mock:
+                with patch.object(progress, "print_human") as print_mock:
+                    with patch.object(progress.time, "sleep") as sleep_mock:
+                        progress.main()
+
+        self.assertEqual(payload_mock.call_count, 2)
+        self.assertEqual(print_mock.call_count, 2)
+        sleep_mock.assert_called_once_with(1.0)
+
 
 if __name__ == "__main__":
     unittest.main()

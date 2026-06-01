@@ -60,6 +60,8 @@ To check progress without importing the ML stack:
 # or
 scripts/status.sh
 scripts/progress.sh
+# Refresh every 60 seconds without querying Chroma:
+scripts/progress.sh --watch 60
 # Poll until indexing is complete, then run final validation:
 make wait
 ```

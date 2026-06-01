@@ -5,6 +5,7 @@ import json
 import os
 import subprocess
 import sys
+import time
 from datetime import datetime, timezone
 from datetime import timedelta
 from pathlib import Path
@@ -27,6 +28,8 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Report local download and Chroma index progress.")
     parser.add_argument("--json", action="store_true", help="Emit machine-readable JSON.")
     parser.add_argument("--fail-stale", action="store_true", help="Exit non-zero when active indexing appears stalled or orphaned.")
+    parser.add_argument("--watch", type=float, metavar="SECONDS", help="Refresh progress every N seconds until interrupted or complete.")
+    parser.add_argument("--watch-count", type=int, metavar="N", help="Stop watch mode after N refreshes.")
     return parser.parse_args()
 
 
@@ -281,15 +284,34 @@ def stale_failure_reason(payload: dict) -> str | None:
 
 def main() -> None:
     args = parse_args()
-    payload = progress_payload()
-    if args.json:
-        print(json.dumps(payload, indent=2, sort_keys=True))
-    else:
-        print_human(payload)
-    if args.fail_stale:
-        reason = stale_failure_reason(payload)
-        if reason:
-            raise SystemExit(f"Index progress is stale: {reason}")
+    if args.watch is not None and args.json:
+        raise SystemExit("--watch cannot be combined with --json")
+    if args.watch is not None and args.watch <= 0:
+        raise SystemExit("--watch must be greater than 0")
+    if args.watch_count is not None and args.watch_count <= 0:
+        raise SystemExit("--watch-count must be greater than 0")
+    if args.watch_count is not None and args.watch is None:
+        raise SystemExit("--watch-count requires --watch")
+
+    iterations = 0
+    while True:
+        payload = progress_payload()
+        if args.json:
+            print(json.dumps(payload, indent=2, sort_keys=True))
+        else:
+            if args.watch is not None and iterations:
+                print()
+            print_human(payload)
+        if args.fail_stale:
+            reason = stale_failure_reason(payload)
+            if reason:
+                raise SystemExit(f"Index progress is stale: {reason}")
+        iterations += 1
+        if args.watch is None or payload["complete"]:
+            break
+        if args.watch_count is not None and iterations >= args.watch_count:
+            break
+        time.sleep(args.watch)
 
 
 if __name__ == "__main__":
