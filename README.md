@@ -62,6 +62,7 @@ scripts/status.sh
 scripts/progress.sh
 # Refresh every 60 seconds without querying Chroma:
 scripts/progress.sh --watch 60
+make watch
 # Poll until indexing is complete, then run final validation:
 make wait
 ```
@@ -183,7 +184,8 @@ progress status. Set
 `RUN_FINAL_AUDIT=0 RUN_FINAL_VALIDATE=0 make wait` to only wait and report
 completion. Set `MACOS_NOTIFY_ON_COMPLETE=1 make wait` to show a macOS
 notification when the unattended run completes, fails validation, or detects
-stale progress.
+stale progress, or use `make wait-notify` for the same notification-enabled
+wait flow.
 
 ### Docker
 The app can run in Docker Compose and connect back to host oMLX:

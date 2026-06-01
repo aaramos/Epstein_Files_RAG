@@ -72,6 +72,14 @@ class ShellScriptTests(unittest.TestCase):
         self.assertIn("scripts/benchmark.sh", script)
         self.assertIn("scripts/final_audit.sh", script)
 
+    def test_makefile_exposes_mac_wait_helpers(self):
+        makefile = (ROOT / "Makefile").read_text()
+
+        self.assertIn("watch:", makefile)
+        self.assertIn('scripts/progress.sh --watch $${INTERVAL_SECONDS:-60}', makefile)
+        self.assertIn("wait-notify:", makefile)
+        self.assertIn("MACOS_NOTIFY_ON_COMPLETE=1 scripts/wait_for_index.sh", makefile)
+
 
 if __name__ == "__main__":
     unittest.main()

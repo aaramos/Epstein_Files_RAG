@@ -1,6 +1,6 @@
 PYTHON ?= .venv/bin/python
 
-.PHONY: setup doctor status progress wait validate validate-rag final-validate final-audit smoke-app diagnostics benchmark test check run index download docker-up launchd-install launchd-uninstall launchd-status launchd-validate
+.PHONY: setup doctor status progress watch wait wait-notify validate validate-rag final-validate final-audit smoke-app diagnostics benchmark test check run index download docker-up launchd-install launchd-uninstall launchd-status launchd-validate
 
 setup:
 	scripts/setup_macos.sh
@@ -14,8 +14,14 @@ status:
 progress:
 	scripts/progress.sh
 
+watch:
+	scripts/progress.sh --watch $${INTERVAL_SECONDS:-60}
+
 wait:
 	scripts/wait_for_index.sh
+
+wait-notify:
+	MACOS_NOTIFY_ON_COMPLETE=1 scripts/wait_for_index.sh
 
 validate:
 	scripts/validate_rag.sh
