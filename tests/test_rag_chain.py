@@ -23,6 +23,41 @@ class RagChainTests(unittest.TestCase):
         with patch.dict(os.environ, {"EMBEDDING_DEVICE": "cpu"}, clear=True):
             self.assertEqual(rag_chain._embedding_device(), "cpu")
 
+    def test_retriever_falls_back_to_sqlite_fts(self):
+        class FailingRetriever:
+            def invoke(self, _query):
+                raise RuntimeError("hnsw failed")
+
+        class FakeVectorstore:
+            def as_retriever(self, **_kwargs):
+                return FailingRetriever()
+
+        expected_docs = [object()]
+        with patch.object(rag_chain, "get_vectorstore", return_value=FakeVectorstore()):
+            with patch.object(rag_chain, "_sqlite_fts_search", return_value=expected_docs) as search:
+                docs = rag_chain.get_retriever().invoke({"input": "Epstein aircraft"})
+
+        self.assertEqual(docs, expected_docs)
+        search.assert_called_once_with("Epstein aircraft", rag_chain.DEFAULT_RETRIEVER_K)
+
+    def test_retriever_backend_can_force_sqlite_fts(self):
+        with patch.dict(os.environ, {"RETRIEVER_BACKEND": "sqlite_fts"}, clear=True):
+            with patch.object(rag_chain, "get_vectorstore") as vectorstore:
+                with patch.object(rag_chain, "_sqlite_fts_search", return_value=[]) as search:
+                    rag_chain.get_retriever().invoke({"input": "flight logs"})
+
+        vectorstore.assert_not_called()
+        search.assert_called_once_with("flight logs", rag_chain.DEFAULT_RETRIEVER_K)
+
+    def test_retriever_auto_uses_sqlite_fts_for_uncompacted_wal(self):
+        with patch.dict(os.environ, {}, clear=True):
+            with patch.object(rag_chain, "get_vectorstore"):
+                with patch.object(rag_chain, "_has_uncompacted_vector_wal", return_value=True):
+                    with patch.object(rag_chain, "_sqlite_fts_search", return_value=[]) as search:
+                        rag_chain.get_retriever().invoke({"input": "flight logs"})
+
+        search.assert_called_once_with("flight logs", rag_chain.DEFAULT_RETRIEVER_K)
+
 
 if __name__ == "__main__":
     unittest.main()

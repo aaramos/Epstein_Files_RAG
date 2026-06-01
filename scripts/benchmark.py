@@ -15,7 +15,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from index_state import DEFAULT_EXPECTED_FILES, read_index_status
-from rag_chain import get_rag_chain, get_vectorstore
+from rag_chain import collection_record_count, get_rag_chain, get_retriever
 
 
 DEFAULT_QUERIES = (
@@ -45,11 +45,8 @@ def percentile(values: list[float], pct: float) -> float | None:
     return values[index]
 
 
-def collection_count(vectorstore) -> int | None:
-    try:
-        return int(vectorstore._collection.count())
-    except Exception:
-        return None
+def collection_count() -> int | None:
+    return collection_record_count()
 
 
 def validate_safe_to_query(expected_files: int, allow_active_index: bool) -> None:
@@ -62,15 +59,8 @@ def validate_safe_to_query(expected_files: int, allow_active_index: bool) -> Non
 
 
 def run_retrieval(query: str) -> dict:
-    vectorstore = get_vectorstore()
     start = time.perf_counter()
-    docs = vectorstore.as_retriever(
-        search_type="mmr",
-        search_kwargs={
-            "k": int(os.getenv("RETRIEVER_K", "12")),
-            "fetch_k": int(os.getenv("RETRIEVER_FETCH_K", "80")),
-        },
-    ).invoke(query)
+    docs = get_retriever().invoke({"input": query})
     elapsed = time.perf_counter() - start
     return {
         "query": query,
@@ -110,10 +100,9 @@ def main() -> None:
     args = parse_args()
     validate_safe_to_query(args.expected_files, args.allow_active_index)
     queries = tuple(args.query or DEFAULT_QUERIES)
-    vectorstore = get_vectorstore()
     retrieval = [run_retrieval(query) for query in queries]
     payload = {
-        "vector_records": collection_count(vectorstore),
+        "vector_records": collection_count(),
         "retrieval": retrieval,
         "retrieval_summary": summarize(retrieval),
     }

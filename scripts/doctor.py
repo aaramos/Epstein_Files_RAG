@@ -128,10 +128,9 @@ def check_retrieval() -> None:
         status("Retrieval", True, "skipped until full index is complete")
         return
     try:
-        from rag_chain import get_vectorstore
+        from rag_chain import get_retriever
 
-        vectorstore = get_vectorstore()
-        docs = vectorstore.as_retriever(search_kwargs={"k": 3}).invoke("Epstein aircraft")
+        docs = get_retriever().invoke({"input": "Epstein aircraft"})
         status("Retrieval", len(docs) >= 1, f"{len(docs)} docs returned")
     except Exception as exc:
         status("Retrieval", False, f"{exc}")

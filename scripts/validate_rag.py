@@ -12,7 +12,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from index_state import DEFAULT_EXPECTED_FILES, read_index_status
-from rag_chain import get_rag_chain, get_vectorstore
+from rag_chain import collection_record_count, get_rag_chain, get_retriever
 
 
 DEFAULT_QUERY = "What is the name of the aircraft used by Epstein?"
@@ -49,19 +49,9 @@ def validate_safe_to_query(expected_files: int, allow_active_index: bool) -> Non
 
 
 def validate_retrieval(query: str, min_docs: int) -> list:
-    vectorstore = get_vectorstore()
-    try:
-        count = vectorstore._collection.count()
-    except Exception:
-        count = None
+    count = collection_record_count()
     print(f"Vector records: {count if count is not None else 'unknown'}")
-    docs = vectorstore.as_retriever(
-        search_type="mmr",
-        search_kwargs={
-            "k": max(min_docs, int(os.getenv("RETRIEVER_K", "12"))),
-            "fetch_k": int(os.getenv("RETRIEVER_FETCH_K", "80")),
-        },
-    ).invoke(query)
+    docs = get_retriever().invoke({"input": query})
     print(f"Retrieved docs: {len(docs)}")
     for index, doc in enumerate(docs[: min(5, len(docs))], start=1):
         source = doc.metadata.get("source", "unknown")
