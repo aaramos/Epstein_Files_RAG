@@ -115,6 +115,11 @@ The compose file mounts `./data`, `./chroma_db`, and your host
 acceleration, so native Mac execution is preferred for high-throughput
 embedding/indexing.
 
+The Docker image intentionally does not use `constraints-macos-arm64.txt` by
+default because that file captures the native Mac Studio environment, not the
+Linux container runtime. To force a constraint file for a custom build, pass
+`--build-arg PIP_CONSTRAINT_FILE=<file>`.
+
 ### macOS LaunchAgent Templates
 Example LaunchAgent plists live in `launchd/`:
 
