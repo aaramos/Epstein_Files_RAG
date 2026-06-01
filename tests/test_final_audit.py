@@ -184,6 +184,44 @@ class FinalAuditTests(unittest.TestCase):
         self.assertTrue(cleaned)
         self.assertFalse(lock_path.exists())
 
+    def test_check_index_progress_accepts_inactive_indexer(self):
+        ok, detail = final_audit.check_index_progress(indexing_active=False)
+
+        self.assertTrue(ok)
+        self.assertIn("no active", detail)
+
+    def test_check_index_progress_accepts_fresh_active_indexer(self):
+        payload = {
+            "stale": False,
+            "stale_seconds": 600,
+            "indexer_process_missing": False,
+            "indexing_active": True,
+            "index_lock": {"present": True, "stale": False},
+            "manifest_age_seconds": 2,
+            "index_log_age_seconds": 3,
+        }
+        with patch.object(final_audit, "progress_payload", return_value=payload):
+            ok, detail = final_audit.check_index_progress(indexing_active=True)
+
+        self.assertTrue(ok)
+        self.assertIn("fresh", detail)
+
+    def test_check_index_progress_rejects_stale_active_indexer(self):
+        payload = {
+            "stale": True,
+            "stale_seconds": 60,
+            "indexer_process_missing": False,
+            "indexing_active": True,
+            "index_lock": {"present": True, "stale": False},
+            "manifest_age_seconds": 120,
+            "index_log_age_seconds": 120,
+        }
+        with patch.object(final_audit, "progress_payload", return_value=payload):
+            ok, detail = final_audit.check_index_progress(indexing_active=True)
+
+        self.assertFalse(ok)
+        self.assertIn("quiet", detail)
+
     def test_check_disk_space_accepts_sufficient_space(self):
         usage = Mock(total=100 * 1024**3, free=50 * 1024**3)
         with patch.object(final_audit.shutil, "disk_usage", return_value=usage), patch.dict(
@@ -220,6 +258,8 @@ class FinalAuditTests(unittest.TestCase):
         ), patch.object(final_audit, "clean_stale_index_lock", return_value=False), patch.object(
             final_audit, "check_index_lock", return_value=(True, "lock ok")
         ), patch.object(
+            final_audit, "check_index_progress", return_value=(True, "progress ok")
+        ), patch.object(
             final_audit, "check_disk_space", return_value=(True, "disk ok")
         ), patch.object(
             final_audit, "check_docker_assets", return_value=(True, "docker ok")
@@ -252,6 +292,8 @@ class FinalAuditTests(unittest.TestCase):
         ), patch.object(final_audit, "clean_stale_index_lock", return_value=False), patch.object(
             final_audit, "check_index_lock", return_value=(True, "lock ok")
         ), patch.object(
+            final_audit, "check_index_progress", return_value=(True, "progress ok")
+        ), patch.object(
             final_audit, "check_disk_space", return_value=(True, "disk ok")
         ), patch.object(
             final_audit, "check_docker_assets", return_value=(True, "docker ok")
@@ -283,6 +325,8 @@ class FinalAuditTests(unittest.TestCase):
         ), patch.object(final_audit, "clean_stale_index_lock", return_value=False), patch.object(
             final_audit, "check_index_lock", return_value=(True, "lock ok")
         ), patch.object(
+            final_audit, "check_index_progress", return_value=(True, "progress ok")
+        ), patch.object(
             final_audit, "check_disk_space", return_value=(True, "disk ok")
         ), patch.object(
             final_audit, "check_docker_assets", return_value=(True, "docker ok")
@@ -313,6 +357,8 @@ class FinalAuditTests(unittest.TestCase):
             final_audit, "check_omlx", return_value=(True, "ok")
         ), patch.object(final_audit, "clean_stale_index_lock", return_value=False), patch.object(
             final_audit, "check_index_lock", return_value=(True, "lock ok")
+        ), patch.object(
+            final_audit, "check_index_progress", return_value=(True, "progress ok")
         ), patch.object(
             final_audit, "check_disk_space", return_value=(True, "disk ok")
         ), patch.object(

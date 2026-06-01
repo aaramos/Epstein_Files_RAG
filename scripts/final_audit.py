@@ -20,6 +20,7 @@ if str(SCRIPTS_DIR) not in sys.path:
 from index_state import read_index_status
 from index_lock import process_alive, read_lock, release_stale_lock
 from llm_factory import _get_omlx_api_key, get_omlx_base_url, get_omlx_model_name
+from progress import human_duration, progress_payload, stale_failure_reason
 
 
 DB_DIR = Path(os.getenv("DB_PATH", str(ROOT / "chroma_db")))
@@ -131,6 +132,20 @@ def clean_stale_index_lock() -> bool:
     return release_stale_lock(index_lock_path())
 
 
+def check_index_progress(indexing_active: bool) -> tuple[bool, str]:
+    if not indexing_active:
+        return True, "no active indexer"
+
+    payload = progress_payload()
+    reason = stale_failure_reason(payload)
+    if reason:
+        return False, reason
+
+    manifest_age = human_duration(payload.get("manifest_age_seconds"))
+    log_age = human_duration(payload.get("index_log_age_seconds"))
+    return True, f"active indexer fresh; manifest updated {manifest_age} ago, index log updated {log_age} ago"
+
+
 def check_disk_space() -> tuple[bool, str]:
     min_free_gb = float(os.getenv("MIN_FREE_DISK_GB", "20"))
     target = DB_DIR if DB_DIR.exists() else DB_DIR.parent
@@ -172,6 +187,9 @@ def audit_payload(skip_app: bool = False, skip_rag: bool = False) -> dict:
 
     lock_ok, lock_detail = check_index_lock(status.indexing_active)
     add_gate(gates, "index_lock", "Index lock", lock_ok, lock_detail)
+
+    progress_ok, progress_detail = check_index_progress(status.indexing_active)
+    add_gate(gates, "index_progress", "Index progress", progress_ok, progress_detail)
 
     disk_ok, disk_detail = check_disk_space()
     add_gate(gates, "disk_space", "Disk space", disk_ok, disk_detail)
