@@ -110,6 +110,11 @@ After the full corpus finishes indexing, run `make final-validate`. It fails
 until all expected parquet files are indexed, then performs retrieval plus a
 short oMLX generation check.
 
+For a one-command completion gate, run `make final-audit`. It checks dataset
+presence, full-index completion, oMLX reachability, and final RAG validation.
+While indexing is still running, use `scripts/final_audit.sh --allow-incomplete`
+to see the current gate state without failing the command.
+
 For unattended completion, run `make wait`. It prints progress on an interval
 and automatically runs final validation when the manifest shows all files are
 indexed. Set `RUN_FINAL_VALIDATE=0 make wait` to only wait and report completion.
