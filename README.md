@@ -68,8 +68,8 @@ scripts/benchmark.sh
 ```
 
 The same commands are exposed as Make targets: `make status`, `make progress`,
-`make validate`, `make validate-rag`, `make benchmark`, `make test`, and
-`make check`.
+`make validate`, `make validate-rag`, `make final-validate`,
+`make benchmark`, `make test`, and `make check`.
 
 This fork also includes `constraints-macos-arm64.txt`, a known-good constraints
 set captured from the working Mac Studio environment. `scripts/setup_macos.sh`
@@ -92,6 +92,10 @@ Useful local generation knobs:
 - `OMLX_MAX_TOKENS`: response cap for local oMLX calls.
 - `OMLX_TIMEOUT_SECONDS`: request timeout for local oMLX calls.
 - `LLM_TEMPERATURE`: shared temperature setting for all providers.
+
+After the full corpus finishes indexing, run `make final-validate`. It fails
+until all expected parquet files are indexed, then performs retrieval plus a
+short oMLX generation check.
 
 ### Docker
 The app can run in Docker Compose and connect back to host oMLX:
@@ -116,26 +120,25 @@ then load it with `launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/<file
 The templates use this checkout path:
 `/Users/macstudio/Documents/RAG/Epstein_Files_RAG_macstudio`.
 
-### 1. Prerequisites
+### General Prerequisites
 - **Python 3.10+** (Recommend using a virtual environment).
 - **Ollama** (Optional): If you want to run LLMs completely locally. Download at [ollama.com](https://ollama.com/).
-- **Windows Users**: If you encounter DLL initialization errors with TensorFlow/Transformers, ensure you follow the installation steps below precisely, as the `requirements.txt` includes critical fixes for `torch` and `protobuf`.
 
-### 2. Installation
+### General Installation
 Clone the repository and install dependencies:
 ```bash
-git clone https://github.com/AbhisumatK/Epstein_Files_RAG
+git clone https://github.com/aaramos/Epstein_Files_RAG
 cd Epstein_Files_RAG
 
 # Optional create a virtual environment
 python -m venv venv
-.\venv\Scripts\activate  # On Windows
+. venv/bin/activate
 
 # install dependencies
 pip install -r requirements.txt
 ```
 
-### 3. Environment Configuration
+### Environment Configuration
 Copy the `.env.example` to `.env` and configure your providers:
 ```bash
 cp .env.example .env
@@ -145,15 +148,16 @@ Fill in your API keys in `.env`:
 - **OpenRouter API**: Get yours at [openrouter.ai](https://openrouter.ai/).
 - **Ollama**: No key needed, just ensure it's running.
 
-### 4. Data Ingestion
+### Data Ingestion
 The Epstein dataset is massive (>200GB). By default, the ingestion script downloads only the first **0.5 GB** chunk for testing.
 ```bash
 python ingest.py
 ```
 - **Estimated Time**: ~3-5 minutes for the first chunk (depending on your bandwidth).
-- **How to Tweaks**: Open `ingest.py` and change `num_files=1` to a higher number (e.g., `num_files=10` for ~5GB) to index more data.
+- **Full Corpus**: Run `python ingest.py --all` or use `make download` and
+  `make index`.
 
-### 5. Launch the Application
+### Launch the Application
 Start the Streamlit dashboard:
 ```bash
 streamlit run app.py

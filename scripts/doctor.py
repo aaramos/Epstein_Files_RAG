@@ -12,8 +12,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
-DATA_DIR = ROOT / "data"
-DB_DIR = ROOT / "chroma_db"
+DATA_DIR = Path(os.getenv("DATA_PATH", str(ROOT / "data")))
+DB_DIR = Path(os.getenv("DB_PATH", str(ROOT / "chroma_db")))
 MANIFEST_PATH = Path(os.getenv("INGEST_MANIFEST_PATH", str(DB_DIR / "ingest_manifest.json")))
 OMLX_BASE_URL = os.getenv("MORNING_DISPATCH_MODEL_BASE_URL") or os.getenv("OMLX_BASE_URL", "http://127.0.0.1:1234/v1")
 
@@ -91,17 +91,24 @@ def check_omlx() -> None:
 def check_data_index() -> None:
     parquet_count = len(list(DATA_DIR.glob("epstein_files-*.parquet")))
     status("Dataset", parquet_count == 634, f"{parquet_count}/634 parquet files")
-    try:
-        manifest = json.loads(MANIFEST_PATH.read_text())
-    except (OSError, json.JSONDecodeError):
-        manifest = {"completed_files": {}, "in_progress": {}}
+    manifest = load_manifest()
     completed = manifest.get("completed_files", {})
     in_progress = manifest.get("in_progress", {})
     chunks = sum(item.get("chunks", 0) for item in completed.values())
     status("Chroma index", bool(completed), f"{len(completed)}/634 files, {len(in_progress)} in progress, {chunks:,} chunks")
 
 
+def load_manifest() -> dict:
+    try:
+        return json.loads(MANIFEST_PATH.read_text())
+    except (OSError, json.JSONDecodeError):
+        return {"completed_files": {}, "in_progress": {}}
+
+
 def check_retrieval() -> None:
+    if load_manifest().get("in_progress"):
+        status("Retrieval", True, "skipped while indexing is active")
+        return
     try:
         from rag_chain import get_vectorstore
 
@@ -113,9 +120,10 @@ def check_retrieval() -> None:
 
 
 def check_ports() -> None:
+    port = int(os.getenv("STREAMLIT_PORT", "8501"))
     with socket.socket() as sock:
-        app_running = sock.connect_ex(("127.0.0.1", int(os.getenv("STREAMLIT_PORT", "8501")))) == 0
-    status("Streamlit app", True, "running on 8501" if app_running else "not running")
+        app_running = sock.connect_ex(("127.0.0.1", port)) == 0
+    status("Streamlit app", True, f"running on {port}" if app_running else "not running")
 
 
 def check_container_runtime() -> None:

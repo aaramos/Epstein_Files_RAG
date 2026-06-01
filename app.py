@@ -3,7 +3,6 @@ os.environ["USE_TORCH"] = "1" # Force PyTorch, disable TensorFlow
 import json
 from pathlib import Path
 import streamlit as st
-import os
 from dotenv import load_dotenv
 from rag_chain import get_rag_chain
 

@@ -54,7 +54,7 @@ def get_llm(provider=None, model_name=None):
     """
     Factory function to get the LLM based on provider.
     """
-    provider = provider or os.getenv("LLM_PROVIDER", "OLLAMA").upper()
+    provider = provider or os.getenv("LLM_PROVIDER", "OMLX").upper()
     
     if provider == "OMLX":
         api_key = _get_omlx_api_key()

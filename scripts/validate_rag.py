@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import sys
 from pathlib import Path
@@ -15,6 +16,7 @@ from rag_chain import get_rag_chain, get_vectorstore
 
 
 DEFAULT_QUERY = "What is the name of the aircraft used by Epstein?"
+DEFAULT_EXPECTED_FILES = 634
 
 
 def parse_args() -> argparse.Namespace:
@@ -24,7 +26,24 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--rag", action="store_true", help="Also call the configured LLM and generate an answer.")
     parser.add_argument("--provider", default=os.getenv("LLM_PROVIDER", "OMLX"))
     parser.add_argument("--model", default=os.getenv("OMLX_MODEL") or os.getenv("MORNING_DISPATCH_LIBRARIAN_MODEL", "Gemma4-MTP-26B-BF16"))
+    parser.add_argument("--require-full-index", action="store_true", help="Fail unless every expected parquet file is indexed and no file is in progress.")
+    parser.add_argument("--expected-files", type=int, default=int(os.getenv("EXPECTED_PARQUET_FILES", str(DEFAULT_EXPECTED_FILES))))
     return parser.parse_args()
+
+
+def validate_full_index(expected_files: int) -> None:
+    manifest_path = Path(os.getenv("INGEST_MANIFEST_PATH", str(ROOT / "chroma_db" / "ingest_manifest.json")))
+    try:
+        manifest = json.loads(manifest_path.read_text())
+    except (OSError, json.JSONDecodeError) as exc:
+        raise SystemExit(f"Could not read ingest manifest at {manifest_path}: {exc}") from exc
+
+    completed = manifest.get("completed_files", {})
+    in_progress = manifest.get("in_progress", {})
+    print(f"Indexed files: {len(completed)}/{expected_files}")
+    print(f"In-progress files: {len(in_progress)}")
+    if len(completed) < expected_files or in_progress:
+        raise SystemExit("Full index is not complete yet")
 
 
 def validate_retrieval(query: str, min_docs: int) -> list:
@@ -68,6 +87,8 @@ def validate_rag(query: str, provider: str, model: str) -> None:
 
 if __name__ == "__main__":
     args = parse_args()
+    if args.require_full_index:
+        validate_full_index(args.expected_files)
     validate_retrieval(args.query, args.min_docs)
     if args.rag:
         validate_rag(args.query, args.provider, args.model)

@@ -25,6 +25,3 @@ requests
 tqdm
 huggingface_hub
 watchdog
-
-# Windows-only note: if TensorFlow/Transformers protobuf DLL issues appear,
-# try protobuf==3.20.3 in a separate Windows constraints file.
