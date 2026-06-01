@@ -113,6 +113,13 @@ class ShellScriptTests(unittest.TestCase):
         self.assertIn("promote-chroma:", makefile)
         self.assertIn("scripts/promote_chroma_rebuild.sh", makefile)
 
+    def test_faiss_promotion_proves_auto_backend_selection(self):
+        script = (ROOT / "scripts" / "promote_faiss.sh").read_text()
+
+        self.assertIn(".venv/bin/python scripts/validate_faiss.py --path \"$FAISS_INDEX_DIR\"", script)
+        self.assertIn("RETRIEVER_BACKEND=auto FAISS_INDEX_DIR=\"$FAISS_INDEX_DIR\"", script)
+        self.assertIn("scripts/retrieval_backend_status.py --expect faiss_hnsw", script)
+
 
 if __name__ == "__main__":
     unittest.main()

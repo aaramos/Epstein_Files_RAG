@@ -6,6 +6,8 @@ cd "$(dirname "$0")/.."
 FAISS_INDEX_DIR="${FAISS_INDEX_DIR:-./faiss_index}"
 
 .venv/bin/python scripts/validate_faiss.py --path "$FAISS_INDEX_DIR"
+RETRIEVER_BACKEND=auto FAISS_INDEX_DIR="$FAISS_INDEX_DIR" \
+  .venv/bin/python scripts/retrieval_backend_status.py --expect faiss_hnsw
 
 cat <<EOF
 FAISS is validated and ready.

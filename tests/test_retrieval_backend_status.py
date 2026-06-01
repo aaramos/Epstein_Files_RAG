@@ -1,6 +1,7 @@
 import importlib.util
 import os
 import unittest
+from io import StringIO
 from pathlib import Path
 from unittest.mock import patch
 
@@ -32,6 +33,41 @@ class RetrievalBackendStatusTests(unittest.TestCase):
 
         self.assertEqual(payload["selected"], "sqlite_fts")
         self.assertIn("Chroma", payload["reason"])
+
+    def test_expect_rejects_wrong_backend(self):
+        with patch.object(
+            retrieval_backend_status,
+            "selected_backend",
+            return_value={
+                "configured": "auto",
+                "selected": "sqlite_fts",
+                "reason": "gap",
+                "faiss_available": False,
+                "chroma_has_uncompacted_vector_wal": True,
+            },
+        ), patch("sys.argv", ["retrieval_backend_status.py", "--expect", "faiss_hnsw"]):
+            with self.assertRaises(SystemExit) as context:
+                retrieval_backend_status.main()
+
+        self.assertIn("Expected backend faiss_hnsw", str(context.exception))
+
+    def test_expect_accepts_matching_backend(self):
+        with patch.object(
+            retrieval_backend_status,
+            "selected_backend",
+            return_value={
+                "configured": "auto",
+                "selected": "faiss_hnsw",
+                "reason": "complete",
+                "faiss_available": True,
+                "chroma_has_uncompacted_vector_wal": True,
+            },
+        ), patch("sys.argv", ["retrieval_backend_status.py", "--expect", "faiss_hnsw"]), patch(
+            "sys.stdout", new_callable=StringIO
+        ) as stdout:
+            retrieval_backend_status.main()
+
+        self.assertIn("Selected backend: faiss_hnsw", stdout.getvalue())
 
 
 if __name__ == "__main__":

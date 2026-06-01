@@ -48,9 +48,13 @@ def selected_backend() -> dict:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Report which retrieval backend the app will choose.")
     parser.add_argument("--json", action="store_true")
+    parser.add_argument("--expect", help="Fail unless the selected backend matches this value.")
     args = parser.parse_args()
 
     payload = selected_backend()
+    if args.expect and payload["selected"] != args.expect:
+        raise SystemExit(f"Expected backend {args.expect}, selected {payload['selected']}: {payload['reason']}")
+
     if args.json:
         print(json.dumps(payload, indent=2))
         return
