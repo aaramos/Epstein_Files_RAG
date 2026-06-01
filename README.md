@@ -141,6 +141,7 @@ Inspect the live Chroma vector/metadata state:
 ```bash
 make chroma-vector
 make validate-chroma
+make backend-status
 ```
 
 Build a replacement Chroma index into a separate directory with safer HNSW
@@ -185,7 +186,8 @@ RETRIEVER_BACKEND=faiss FAISS_INDEX_DIR=./faiss_index scripts/run_native.sh
 With `RETRIEVER_BACKEND=auto`, the app prefers a completed FAISS index when one
 is present. If FAISS is absent or incomplete and Chroma's vector segment is
 behind its metadata segment, retrieval falls back to SQLite full-text search so
-the app avoids the broken Chroma HNSW reader.
+the app avoids the broken Chroma HNSW reader. `make backend-status` reports
+which route the app will choose before you start it.
 
 This fork also includes `constraints-macos-arm64.txt`, a known-good constraints
 set captured from the working Mac Studio environment. `scripts/setup_macos.sh`

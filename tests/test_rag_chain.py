@@ -64,12 +64,28 @@ class RagChainTests(unittest.TestCase):
         vectorstore.assert_not_called()
         search.assert_called_once_with("flight logs", rag_chain.DEFAULT_RETRIEVER_K, fake_embeddings)
 
+    def test_retriever_auto_prefers_completed_faiss_over_sqlite_gap(self):
+        expected_docs = [object()]
+        fake_embeddings = object()
+        with patch.dict(os.environ, {}, clear=True):
+            with patch.object(rag_chain, "get_vectorstore") as vectorstore:
+                with patch.object(rag_chain, "_has_uncompacted_vector_wal", return_value=True):
+                    with patch.object(rag_chain.faiss_store, "available", return_value=True):
+                        with patch.object(rag_chain, "get_embeddings", return_value=fake_embeddings):
+                            with patch.object(rag_chain.faiss_store, "search", return_value=expected_docs) as search:
+                                docs = rag_chain.get_retriever().invoke({"input": "flight logs"})
+
+        self.assertEqual(docs, expected_docs)
+        vectorstore.assert_not_called()
+        search.assert_called_once_with("flight logs", rag_chain.DEFAULT_RETRIEVER_K, fake_embeddings)
+
     def test_retriever_auto_uses_sqlite_fts_for_uncompacted_wal(self):
         with patch.dict(os.environ, {}, clear=True):
             with patch.object(rag_chain, "get_vectorstore"):
                 with patch.object(rag_chain, "_has_uncompacted_vector_wal", return_value=True):
-                    with patch.object(rag_chain, "_sqlite_fts_search", return_value=[]) as search:
-                        rag_chain.get_retriever().invoke({"input": "flight logs"})
+                    with patch.object(rag_chain.faiss_store, "available", return_value=False):
+                        with patch.object(rag_chain, "_sqlite_fts_search", return_value=[]) as search:
+                            rag_chain.get_retriever().invoke({"input": "flight logs"})
 
         search.assert_called_once_with("flight logs", rag_chain.DEFAULT_RETRIEVER_K)
 
