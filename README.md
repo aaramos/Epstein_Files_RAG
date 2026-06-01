@@ -59,6 +59,10 @@ scripts/progress.sh
 make wait
 ```
 
+`scripts/progress.sh` also reports manifest and index-log freshness. If an
+active indexer has not written to `runtime/index_full.log` for more than
+`INDEX_STALE_SECONDS` seconds, it prints a warning.
+
 To run a Mac readiness check:
 
 ```bash

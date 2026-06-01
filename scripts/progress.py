@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -11,6 +12,9 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from index_state import default_manifest_path, load_manifest, read_index_status
+
+LOG_PATH = Path(os.getenv("INDEX_LOG_PATH", str(ROOT / "runtime" / "index_full.log")))
+STALE_SECONDS = int(os.getenv("INDEX_STALE_SECONDS", "600"))
 
 
 def parse_time(value: str | None) -> datetime | None:
@@ -33,6 +37,13 @@ def human_duration(seconds: float | None) -> str:
     if minutes:
         return f"{minutes}m {secs}s"
     return f"{secs}s"
+
+
+def file_age_seconds(path: Path, now: datetime) -> float | None:
+    try:
+        return now.timestamp() - path.stat().st_mtime
+    except OSError:
+        return None
 
 
 def main() -> None:
@@ -68,6 +79,13 @@ def main() -> None:
     print(f"Elapsed: {human_duration(elapsed)}")
     print(f"Rate: {rate * 60:.2f} files/min" if rate else "Rate: unknown")
     print(f"ETA: {human_duration(eta)}")
+
+    manifest_age = file_age_seconds(default_manifest_path(ROOT), now)
+    log_age = file_age_seconds(LOG_PATH, now)
+    print(f"Manifest updated: {human_duration(manifest_age)} ago" if manifest_age is not None else "Manifest updated: unknown")
+    print(f"Index log updated: {human_duration(log_age)} ago" if log_age is not None else "Index log updated: unknown")
+    if status.indexing_active and log_age is not None and log_age > STALE_SECONDS:
+        print(f"Warning: index log has been quiet for more than {human_duration(STALE_SECONDS)}")
 
 
 if __name__ == "__main__":
