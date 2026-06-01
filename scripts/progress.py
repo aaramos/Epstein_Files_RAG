@@ -20,7 +20,7 @@ if str(ROOT) not in sys.path:
 if str(SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPTS_DIR))
 
-from index_state import default_manifest_path, load_manifest, read_index_status
+from index_state import default_data_dir, default_manifest_path, load_manifest, read_index_status
 from index_lock import process_alive, read_lock
 
 
@@ -60,6 +60,40 @@ def file_age_seconds(path: Path, now: datetime) -> float | None:
         return now.timestamp() - path.stat().st_mtime
     except OSError:
         return None
+
+
+def human_size(num_bytes: int | None) -> str:
+    if num_bytes is None:
+        return "unknown"
+    value = float(num_bytes)
+    for unit in ("B", "KB", "MB", "GB"):
+        if value < 1024:
+            return f"{value:.1f} {unit}" if unit != "B" else f"{int(value)} B"
+        value /= 1024
+    return f"{value:.1f} TB"
+
+
+def data_payload(root: Path = ROOT) -> dict:
+    data_dir = default_data_dir(root)
+    try:
+        resolved = data_dir.resolve(strict=False)
+    except OSError:
+        resolved = data_dir
+    parquet_files = list(data_dir.glob("epstein_files-*.parquet"))
+    total_bytes = 0
+    size_known = True
+    for path in parquet_files:
+        try:
+            total_bytes += path.stat().st_size
+        except OSError:
+            size_known = False
+    return {
+        "path": str(data_dir),
+        "resolved_path": str(resolved),
+        "is_symlink": data_dir.is_symlink(),
+        "size_bytes": total_bytes if size_known else None,
+        "size_human": human_size(total_bytes if size_known else None),
+    }
 
 
 def index_log_path(root: Path = ROOT) -> Path:
@@ -190,8 +224,10 @@ def progress_payload() -> dict:
     process_missing = bool(status.indexing_active and process_scan_available and not processes)
     stale = bool(status.indexing_active and log_age is not None and log_age > stale_after)
     lock = lock_payload(now)
+    data = data_payload(ROOT)
 
     return {
+        "data": data,
         "downloaded_files": status.downloaded_files,
         "expected_files": status.expected_files,
         "indexed_files": status.indexed_files,
@@ -224,6 +260,13 @@ def progress_payload() -> dict:
 
 
 def print_human(payload: dict) -> None:
+    data = payload.get("data") or {}
+    if data:
+        print(f"Data path: {data.get('path')}")
+        resolved = data.get("resolved_path")
+        if resolved and resolved != data.get("path"):
+            print(f"Data resolves to: {resolved}")
+        print(f"Data size: {data.get('size_human', 'unknown')}")
     print(f"Downloaded files: {payload['downloaded_files']}/{payload['expected_files']}")
     indexed_fraction = payload["indexed_fraction"] or 0
     print(f"Indexed files: {payload['indexed_files']}/{payload['expected_files']} ({indexed_fraction:.1%})")

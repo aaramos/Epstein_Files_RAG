@@ -15,6 +15,12 @@ SPEC.loader.exec_module(progress)
 
 
 class ProgressTests(unittest.TestCase):
+    def test_human_size_formats_common_ranges(self):
+        self.assertEqual(progress.human_size(None), "unknown")
+        self.assertEqual(progress.human_size(7), "7 B")
+        self.assertEqual(progress.human_size(2048), "2.0 KB")
+        self.assertEqual(progress.human_size(3 * 1024**3), "3.0 GB")
+
     def test_human_duration_formats_common_ranges(self):
         self.assertEqual(progress.human_duration(None), "unknown")
         self.assertEqual(progress.human_duration(7), "7s")
@@ -39,6 +45,8 @@ class ProgressTests(unittest.TestCase):
             data_dir.mkdir()
             (data_dir / "epstein_files-0000.parquet").touch()
             (data_dir / "epstein_files-0001.parquet").touch()
+            (data_dir / "epstein_files-0000.parquet").write_bytes(b"abcd")
+            (data_dir / "epstein_files-0001.parquet").write_bytes(b"ef")
             manifest_path = root / "manifest.json"
             log_path = root / "index.log"
             lock_path = root / "index.lock"
@@ -82,6 +90,8 @@ class ProgressTests(unittest.TestCase):
                     payload = progress.progress_payload()
 
         self.assertTrue(payload["indexing_active"])
+        self.assertEqual(payload["data"]["size_bytes"], 6)
+        self.assertEqual(payload["data"]["size_human"], "6 B")
         self.assertTrue(payload["stale"])
         self.assertEqual(payload["stale_seconds"], 60)
         self.assertEqual(payload["indexed_chunks"], 4)
@@ -241,6 +251,23 @@ class ProgressTests(unittest.TestCase):
         self.assertEqual(payload_mock.call_count, 2)
         self.assertEqual(print_mock.call_count, 2)
         sleep_mock.assert_called_once_with(1.0)
+
+    def test_data_payload_reports_symlink_resolution(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            real_data = root / "real-data"
+            real_data.mkdir()
+            (real_data / "epstein_files-0000.parquet").write_bytes(b"abcd")
+            linked_data = root / "data"
+            linked_data.symlink_to(real_data)
+
+            with patch.dict(os.environ, {"DATA_PATH": str(linked_data)}, clear=False):
+                payload = progress.data_payload(root)
+
+        self.assertTrue(payload["is_symlink"])
+        self.assertEqual(payload["path"], str(linked_data))
+        self.assertEqual(payload["resolved_path"], str(real_data.resolve()))
+        self.assertEqual(payload["size_bytes"], 4)
 
 
 if __name__ == "__main__":
