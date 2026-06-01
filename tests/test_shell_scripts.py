@@ -20,6 +20,13 @@ class ShellScriptTests(unittest.TestCase):
         self.assertIn("CHILD_PID=\"$!\"", script)
         self.assertIn("wait \"$CHILD_PID\"", script)
 
+    def test_app_smoke_uses_dynamic_port_by_default(self):
+        script = (ROOT / "scripts" / "smoke_app.sh").read_text()
+
+        self.assertIn('if [[ -n "${STREAMLIT_PORT:-}" ]]', script)
+        self.assertIn('sock.bind(("127.0.0.1", 0))', script)
+        self.assertIn('STREAMLIT_PORT="$PORT"', script)
+
 
 if __name__ == "__main__":
     unittest.main()

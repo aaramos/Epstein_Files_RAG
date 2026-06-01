@@ -92,6 +92,9 @@ scripts/benchmark.sh
 `scripts/doctor.sh` also checks free disk space on the Chroma volume. The
 default minimum is `20` GB; override it with `MIN_FREE_DISK_GB` if your target
 volume needs a different threshold.
+`scripts/smoke_app.sh` starts Streamlit on a free localhost port by default so
+the final audit is not sensitive to another service already using `8501` or
+`8502`. Set `STREAMLIT_PORT` when you need to test a specific port.
 
 To collect a timestamped handoff bundle with progress, audit gates, JSON audit
 state, LaunchAgent status/validation, git state, a manifest, and index log tails:
