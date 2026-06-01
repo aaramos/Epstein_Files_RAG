@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import shutil
 import subprocess
 import sys
 import urllib.request
@@ -19,6 +20,9 @@ if str(SCRIPTS_DIR) not in sys.path:
 from index_state import read_index_status
 from index_lock import process_alive, read_lock
 from llm_factory import _get_omlx_api_key, get_omlx_base_url, get_omlx_model_name
+
+
+DB_DIR = Path(os.getenv("DB_PATH", str(ROOT / "chroma_db")))
 
 
 def parse_args() -> argparse.Namespace:
@@ -88,6 +92,16 @@ def check_index_lock(indexing_active: bool) -> tuple[bool, str]:
     return False, f"stale index lock at {path} for PID {pid}"
 
 
+def check_disk_space() -> tuple[bool, str]:
+    min_free_gb = float(os.getenv("MIN_FREE_DISK_GB", "20"))
+    target = DB_DIR if DB_DIR.exists() else DB_DIR.parent
+    usage = shutil.disk_usage(target)
+    free_gb = usage.free / (1024 ** 3)
+    total_gb = usage.total / (1024 ** 3)
+    ok = free_gb >= min_free_gb
+    return ok, f"{free_gb:.1f} GB free of {total_gb:.1f} GB at {target}; minimum {min_free_gb:.1f} GB"
+
+
 def print_gate(ok: bool, label: str, detail: str) -> None:
     marker = "OK" if ok else "WAIT"
     print(f"[{marker}] {label}: {detail}")
@@ -109,6 +123,9 @@ def audit_payload(skip_app: bool = False, skip_rag: bool = False) -> dict:
 
     lock_ok, lock_detail = check_index_lock(status.indexing_active)
     add_gate(gates, "index_lock", "Index lock", lock_ok, lock_detail)
+
+    disk_ok, disk_detail = check_disk_space()
+    add_gate(gates, "disk_space", "Disk space", disk_ok, disk_detail)
 
     omlx_ok, omlx_detail = check_omlx()
     add_gate(gates, "omlx", "oMLX", omlx_ok, omlx_detail)
