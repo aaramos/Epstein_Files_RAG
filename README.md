@@ -109,7 +109,8 @@ By default, diagnostics are written under `runtime/diagnostics/<timestamp>` and
 such as `progress.json` and `final_audit.json` are written as plain JSON. While
 the index is still running, diagnostics skip the app smoke gate to avoid extra
 Chroma read/write pressure; after the full index is complete, diagnostics record
-the full final audit including app smoke and RAG validation.
+the full final audit including app smoke and RAG validation. The diagnostics
+manifest includes `final_audit_mode` so handoffs can tell which path was used.
 
 The same commands are exposed as Make targets: `make status`, `make progress`,
 `make wait`, `make validate`, `make validate-rag`, `make final-validate`,

@@ -30,6 +30,9 @@ class ShellScriptTests(unittest.TestCase):
     def test_diagnostics_runs_full_audit_after_complete_index(self):
         script = (ROOT / "scripts" / "collect_diagnostics.sh").read_text()
 
+        self.assertIn('FINAL_AUDIT_MODE="partial_skip_app"', script)
+        self.assertIn('FINAL_AUDIT_MODE="full"', script)
+        self.assertIn("final_audit_mode = sys.argv[3]", script)
         self.assertIn("read_index_status().complete", script)
         self.assertIn("run_capture final_audit scripts/final_audit.sh\n", script)
         self.assertIn("run_capture final_audit scripts/final_audit.sh --allow-incomplete --skip-app", script)

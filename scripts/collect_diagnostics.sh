@@ -28,12 +28,14 @@ run_raw_capture() {
 run_capture progress scripts/progress.sh
 run_raw_capture progress scripts/progress.sh --json
 run_capture doctor scripts/doctor.sh
+FINAL_AUDIT_MODE="partial_skip_app"
 if .venv/bin/python - <<'PY'
 from index_state import read_index_status
 
 raise SystemExit(0 if read_index_status().complete else 1)
 PY
 then
+  FINAL_AUDIT_MODE="full"
   run_capture final_audit scripts/final_audit.sh
   run_raw_capture final_audit scripts/final_audit.sh --json
 else
@@ -54,7 +56,7 @@ fi
 git status --short >"${OUT_DIR}/git_status.txt"
 git log --oneline -20 >"${OUT_DIR}/git_log.txt"
 
-.venv/bin/python - <<'PY' "$OUT_DIR" "$STAMP" >"${OUT_DIR}/manifest.json"
+.venv/bin/python - <<'PY' "$OUT_DIR" "$STAMP" "$FINAL_AUDIT_MODE" >"${OUT_DIR}/manifest.json"
 import json
 import subprocess
 import sys
@@ -62,6 +64,7 @@ from pathlib import Path
 
 out_dir = Path(sys.argv[1])
 stamp = sys.argv[2]
+final_audit_mode = sys.argv[3]
 
 def git_value(*args):
     try:
@@ -74,6 +77,7 @@ payload = {
     "generated_at_utc": stamp,
     "git_commit": git_value("rev-parse", "HEAD"),
     "git_branch": git_value("branch", "--show-current"),
+    "final_audit_mode": final_audit_mode,
     "files": files,
     "notes": [
         "progress.json contains machine-readable index progress",
