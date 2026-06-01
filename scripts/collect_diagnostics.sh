@@ -74,12 +74,32 @@ def git_value(*args):
     except Exception:
         return None
 
+def json_file(name):
+    path = out_dir / name
+    try:
+        return json.loads(path.read_text())
+    except Exception:
+        return None
+
+progress = json_file("progress.json") or {}
+final_audit = json_file("final_audit.json") or {}
+
 files = sorted(path.name for path in out_dir.iterdir() if path.is_file() and path.name != "manifest.json")
 payload = {
     "generated_at_utc": stamp,
     "git_commit": git_value("rev-parse", "HEAD"),
     "git_branch": git_value("branch", "--show-current"),
     "final_audit_mode": final_audit_mode,
+    "summary": {
+        "index_complete": progress.get("complete"),
+        "indexed_files": progress.get("indexed_files"),
+        "expected_files": progress.get("expected_files"),
+        "indexed_fraction": progress.get("indexed_fraction"),
+        "eta_at_local": progress.get("eta_at_local"),
+        "eta_at_utc": progress.get("eta_at_utc"),
+        "final_audit_complete": final_audit.get("complete"),
+        "skipped_gates": final_audit.get("skipped_gates"),
+    },
     "files": files,
     "notes": [
         "progress.json contains machine-readable index progress",

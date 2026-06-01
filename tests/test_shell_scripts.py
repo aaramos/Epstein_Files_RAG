@@ -39,6 +39,16 @@ class ShellScriptTests(unittest.TestCase):
         self.assertIn("run_raw_capture benchmark scripts/benchmark.sh --json", script)
         self.assertIn("run_capture final_audit scripts/final_audit.sh --allow-incomplete --skip-app", script)
 
+    def test_diagnostics_manifest_summarizes_index_and_audit_state(self):
+        script = (ROOT / "scripts" / "collect_diagnostics.sh").read_text()
+
+        self.assertIn('progress = json_file("progress.json") or {}', script)
+        self.assertIn('final_audit = json_file("final_audit.json") or {}', script)
+        self.assertIn('"index_complete": progress.get("complete")', script)
+        self.assertIn('"eta_at_local": progress.get("eta_at_local")', script)
+        self.assertIn('"final_audit_complete": final_audit.get("complete")', script)
+        self.assertIn('"skipped_gates": final_audit.get("skipped_gates")', script)
+
     def test_wait_collects_diagnostics_after_validation_attempt(self):
         script = (ROOT / "scripts" / "wait_for_index.sh").read_text()
 
