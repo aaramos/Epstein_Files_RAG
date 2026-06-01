@@ -28,8 +28,18 @@ run_raw_capture() {
 run_capture progress scripts/progress.sh
 run_raw_capture progress scripts/progress.sh --json
 run_capture doctor scripts/doctor.sh
-run_capture final_audit scripts/final_audit.sh --allow-incomplete --skip-app
-run_raw_capture final_audit scripts/final_audit.sh --allow-incomplete --skip-app --json
+if .venv/bin/python - <<'PY'
+from index_state import read_index_status
+
+raise SystemExit(0 if read_index_status().complete else 1)
+PY
+then
+  run_capture final_audit scripts/final_audit.sh
+  run_raw_capture final_audit scripts/final_audit.sh --json
+else
+  run_capture final_audit scripts/final_audit.sh --allow-incomplete --skip-app
+  run_raw_capture final_audit scripts/final_audit.sh --allow-incomplete --skip-app --json
+fi
 run_capture launchd_status scripts/launchd_manage.sh status
 run_capture launchd_validate scripts/launchd_manage.sh validate
 

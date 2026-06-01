@@ -27,6 +27,13 @@ class ShellScriptTests(unittest.TestCase):
         self.assertIn('sock.bind(("127.0.0.1", 0))', script)
         self.assertIn('STREAMLIT_PORT="$PORT"', script)
 
+    def test_diagnostics_runs_full_audit_after_complete_index(self):
+        script = (ROOT / "scripts" / "collect_diagnostics.sh").read_text()
+
+        self.assertIn("read_index_status().complete", script)
+        self.assertIn("run_capture final_audit scripts/final_audit.sh\n", script)
+        self.assertIn("run_capture final_audit scripts/final_audit.sh --allow-incomplete --skip-app", script)
+
 
 if __name__ == "__main__":
     unittest.main()
