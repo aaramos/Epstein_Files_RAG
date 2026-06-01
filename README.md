@@ -169,12 +169,14 @@ Build and monitor the FAISS backend:
 make build-faiss
 make faiss-progress
 make wait-faiss
+make wait-promote-faiss
 ```
 
 `make faiss-progress` reports chunk count, completion state, latest source
 file, build rate, and ETA. `make wait-faiss` waits for the FAISS build to mark
-itself complete, then runs the FAISS readiness validation. A partial FAISS
-index is not used automatically.
+itself complete, then runs the FAISS readiness validation. `make
+wait-promote-faiss` also runs the guarded promotion check after validation. A
+partial FAISS index is not used automatically.
 
 After FAISS validates, cut over explicitly:
 

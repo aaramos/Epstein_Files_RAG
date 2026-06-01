@@ -102,6 +102,12 @@ class ShellScriptTests(unittest.TestCase):
         self.assertIn("partial-audit-json:", makefile)
         self.assertIn("scripts/final_audit.sh --allow-incomplete --skip-app --json", makefile)
 
+    def test_makefile_exposes_wait_promote_faiss(self):
+        makefile = (ROOT / "Makefile").read_text()
+
+        self.assertIn("wait-promote-faiss:", makefile)
+        self.assertIn("scripts/wait_for_faiss.py --validate --promote", makefile)
+
     def test_chroma_promotion_validates_before_and_after_swap(self):
         script = (ROOT / "scripts" / "promote_chroma_rebuild.sh").read_text()
         makefile = (ROOT / "Makefile").read_text()

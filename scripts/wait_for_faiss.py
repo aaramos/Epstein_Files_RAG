@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 import subprocess
 import sys
 import time
@@ -21,6 +22,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--interval", type=int, default=60)
     parser.add_argument("--once", action="store_true", help="Print one status update and exit.")
     parser.add_argument("--validate", action="store_true", help="Run scripts/validate_faiss.py when complete.")
+    parser.add_argument("--promote", action="store_true", help="Run scripts/promote_faiss.sh after completion.")
     return parser.parse_args()
 
 
@@ -55,6 +57,12 @@ def run_validation(path: Path, chroma_manifest: Path) -> None:
     )
 
 
+def run_promotion(path: Path) -> None:
+    merged_env = os.environ.copy()
+    merged_env["FAISS_INDEX_DIR"] = str(path)
+    subprocess.run(["scripts/promote_faiss.sh"], cwd=ROOT, env=merged_env, check=True)
+
+
 def main() -> None:
     args = parse_args()
     path = Path(args.path)
@@ -68,6 +76,8 @@ def main() -> None:
         if data.get("complete") is True:
             if args.validate:
                 run_validation(path, chroma_manifest)
+            if args.promote:
+                run_promotion(path)
             return
         time.sleep(args.interval)
 
