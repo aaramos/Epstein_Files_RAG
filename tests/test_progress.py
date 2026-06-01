@@ -88,6 +88,7 @@ class ProgressTests(unittest.TestCase):
         self.assertEqual(payload["missing_indexed_files"], 1)
         self.assertEqual(payload["missing_indexed_sample"], ["epstein_files-0001.parquet"])
         self.assertEqual(payload["unexpected_indexed_sample"], [])
+        self.assertIsNotNone(payload["eta_at_utc"])
         self.assertEqual(payload["indexer_process_count"], 1)
         self.assertFalse(payload["indexer_process_missing"])
         self.assertTrue(payload["indexer_process_scan_available"])
