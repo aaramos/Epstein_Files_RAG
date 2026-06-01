@@ -1,6 +1,7 @@
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 import pandas as pd
 
@@ -73,6 +74,29 @@ class IngestTests(unittest.TestCase):
         self.assertEqual(ids_a, ids_b)
         self.assertEqual(len(ids_a), len(chunks_a))
         self.assertTrue(ids_a[0].startswith("epstein_files-9999.parquet:1:0:"))
+
+    def test_chroma_collection_metadata_uses_safer_sync_defaults(self):
+        with patch.dict("os.environ", {}, clear=True):
+            metadata = ingest.chroma_collection_metadata()
+
+        self.assertEqual(metadata["hnsw:batch_size"], 256)
+        self.assertEqual(metadata["hnsw:sync_threshold"], 256)
+
+    def test_chroma_collection_metadata_reads_env_overrides(self):
+        with patch.dict(
+            "os.environ",
+            {
+                "CHROMA_HNSW_BATCH_SIZE": "128",
+                "CHROMA_HNSW_SYNC_THRESHOLD": "128",
+                "CHROMA_HNSW_NUM_THREADS": "8",
+            },
+            clear=True,
+        ):
+            metadata = ingest.chroma_collection_metadata()
+
+        self.assertEqual(metadata["hnsw:batch_size"], 128)
+        self.assertEqual(metadata["hnsw:sync_threshold"], 128)
+        self.assertEqual(metadata["hnsw:num_threads"], 8)
 
 
 if __name__ == "__main__":

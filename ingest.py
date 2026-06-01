@@ -64,6 +64,27 @@ def create_embeddings(device: str | None = None):
         )
 
 
+def chroma_collection_metadata() -> dict:
+    metadata = {
+        "hnsw:space": os.getenv("CHROMA_HNSW_SPACE", "l2"),
+        "hnsw:batch_size": int(os.getenv("CHROMA_HNSW_BATCH_SIZE", "256")),
+        "hnsw:sync_threshold": int(os.getenv("CHROMA_HNSW_SYNC_THRESHOLD", "256")),
+    }
+    num_threads = os.getenv("CHROMA_HNSW_NUM_THREADS")
+    if num_threads:
+        metadata["hnsw:num_threads"] = int(num_threads)
+    construction_ef = os.getenv("CHROMA_HNSW_CONSTRUCTION_EF")
+    if construction_ef:
+        metadata["hnsw:construction_ef"] = int(construction_ef)
+    search_ef = os.getenv("CHROMA_HNSW_SEARCH_EF")
+    if search_ef:
+        metadata["hnsw:search_ef"] = int(search_ef)
+    max_neighbors = os.getenv("CHROMA_HNSW_M")
+    if max_neighbors:
+        metadata["hnsw:M"] = int(max_neighbors)
+    return metadata
+
+
 def load_manifest() -> dict:
     try:
         return json.loads(MANIFEST_PATH.read_text())
@@ -212,6 +233,7 @@ def index_files(file_paths: list[Path], batch_size: int, row_batch_size: int | N
     vectorstore = Chroma(
         persist_directory=str(DB_DIR),
         embedding_function=embeddings,
+        collection_metadata=chroma_collection_metadata(),
     )
 
     for file_path in tqdm(file_paths, desc="Indexing parquet files"):

@@ -51,6 +51,19 @@ class RagChainTests(unittest.TestCase):
         vectorstore.assert_not_called()
         search.assert_called_once_with("flight logs", rag_chain.DEFAULT_RETRIEVER_K)
 
+    def test_retriever_backend_can_force_faiss(self):
+        expected_docs = [object()]
+        fake_embeddings = object()
+        with patch.dict(os.environ, {"RETRIEVER_BACKEND": "faiss"}, clear=True):
+            with patch.object(rag_chain, "get_vectorstore") as vectorstore:
+                with patch.object(rag_chain, "get_embeddings", return_value=fake_embeddings):
+                    with patch.object(rag_chain.faiss_store, "search", return_value=expected_docs) as search:
+                        docs = rag_chain.get_retriever().invoke({"input": "flight logs"})
+
+        self.assertEqual(docs, expected_docs)
+        vectorstore.assert_not_called()
+        search.assert_called_once_with("flight logs", rag_chain.DEFAULT_RETRIEVER_K, fake_embeddings)
+
     def test_retriever_auto_uses_sqlite_fts_for_uncompacted_wal(self):
         with patch.dict(os.environ, {}, clear=True):
             with patch.object(rag_chain, "get_vectorstore"):

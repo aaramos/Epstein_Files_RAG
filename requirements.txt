@@ -12,6 +12,7 @@ langchain-classic
 
 # Vector Store & Embeddings
 chromadb
+faiss-cpu
 sentence-transformers
 torch>=2.0.0
 

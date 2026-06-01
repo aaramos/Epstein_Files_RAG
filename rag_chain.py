@@ -11,6 +11,7 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnableLambda
 from langchain_classic.chains import create_retrieval_chain
 from langchain_classic.chains.combine_documents import create_stuff_documents_chain
+import faiss_store
 from llm_factory import get_llm
 
 load_dotenv()
@@ -184,6 +185,8 @@ def get_retriever():
         nonlocal vector_retriever
         query = inputs["input"] if isinstance(inputs, dict) else str(inputs)
         backend = os.getenv("RETRIEVER_BACKEND", "auto").lower()
+        if backend == "faiss" or (backend == "auto" and faiss_store.available()):
+            return faiss_store.search(query, search_kwargs["k"], get_embeddings())
         if backend in {"sqlite", "sqlite_fts", "fts"} or (backend == "auto" and _has_uncompacted_vector_wal()):
             return _sqlite_fts_search(query, search_kwargs["k"])
         try:

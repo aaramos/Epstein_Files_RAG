@@ -1,6 +1,6 @@
 PYTHON ?= .venv/bin/python
 
-.PHONY: setup doctor status progress watch wait wait-notify validate validate-rag final-validate final-audit partial-audit partial-audit-json smoke-app diagnostics benchmark test check run index download docker-up launchd-install launchd-uninstall launchd-status launchd-validate
+.PHONY: setup doctor status progress watch wait wait-notify validate validate-rag final-validate final-audit partial-audit partial-audit-json smoke-app diagnostics benchmark test check run index download build-faiss chroma-vector docker-up launchd-install launchd-uninstall launchd-status launchd-validate
 
 setup:
 	scripts/setup_macos.sh
@@ -64,6 +64,12 @@ index:
 
 download:
 	$(PYTHON) ingest.py --all --download-only
+
+build-faiss:
+	$(PYTHON) scripts/build_faiss.py
+
+chroma-vector:
+	$(PYTHON) scripts/chroma_vector_diagnostics.py
 
 docker-up:
 	docker compose up --build

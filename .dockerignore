@@ -6,5 +6,7 @@ __pycache__
 .env
 data
 chroma_db
+chroma_db_repair_sandbox
+faiss_index
 .cache
 .streamlit/secrets.toml
