@@ -80,6 +80,12 @@ class ShellScriptTests(unittest.TestCase):
         self.assertIn("wait-notify:", makefile)
         self.assertIn("MACOS_NOTIFY_ON_COMPLETE=1 scripts/wait_for_index.sh", makefile)
 
+    def test_makefile_exposes_partial_audit(self):
+        makefile = (ROOT / "Makefile").read_text()
+
+        self.assertIn("partial-audit:", makefile)
+        self.assertIn("scripts/final_audit.sh --allow-incomplete --skip-app", makefile)
+
 
 if __name__ == "__main__":
     unittest.main()

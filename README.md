@@ -85,6 +85,7 @@ To run a Mac readiness check:
 
 ```bash
 scripts/doctor.sh
+make partial-audit
 scripts/smoke_app.sh
 scripts/validate_rag.sh
 # Include a short oMLX generation call:
@@ -167,8 +168,9 @@ For a one-command completion gate, run `make final-audit`. It checks dataset
 presence, full-index completion, native index-lock health, active index-progress
 freshness, disk headroom, oMLX reachability, Docker asset integrity, LaunchAgent
 template validity, Streamlit launch readiness, and final RAG validation. While indexing is still running, use
-`scripts/final_audit.sh --allow-incomplete` to see the current gate state
-without failing the command. Use `scripts/final_audit.sh --json` for
+`make partial-audit` or `scripts/final_audit.sh --allow-incomplete --skip-app`
+to see the current gate state without launching Streamlit or failing the
+command. Use `scripts/final_audit.sh --json` for
 machine-readable gate output. Skipped gates are reported in `skipped_gates` and
 never count as proof that the Mac conversion is complete.
 
