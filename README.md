@@ -48,8 +48,10 @@ The ingester is resumable. It records completed parquet files in
 `chroma_db/ingest_manifest.json`, streams parquet row batches to keep memory
 bounded, and uses stable chunk IDs. The full native helper also uses
 `runtime/index_full.lock` so manual runs and LaunchAgent runs do not accidentally
-start multiple full-index writers against the same Chroma database. Override the
-lock path with `INDEX_LOCK_PATH` if you intentionally run an isolated database.
+start multiple full-index writers against the same Chroma database, and it
+forwards stop signals to the child ingester before releasing the lock. Override
+the lock path with `INDEX_LOCK_PATH` if you intentionally run an isolated
+database.
 
 To check progress without importing the ML stack:
 

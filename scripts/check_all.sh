@@ -4,6 +4,9 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 .venv/bin/python -m compileall app.py ingest.py llm_factory.py rag_chain.py scripts tests
+for script in scripts/*.sh; do
+  bash -n "$script"
+done
 .venv/bin/python -m unittest discover -s tests
 scripts/doctor.sh
 
