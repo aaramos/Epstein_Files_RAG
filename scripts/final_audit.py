@@ -94,15 +94,18 @@ def audit_payload(skip_app: bool = False, skip_rag: bool = False) -> dict:
     if index_ok:
         validation_ok, validation_detail = run_final_validation(skip_rag)
         add_gate(gates, "final_rag_validation", "Final RAG validation", validation_ok, validation_detail)
+        if skip_rag:
+            add_gate(gates, "rag_generation", "RAG generation", True, "skipped", skipped=True)
     else:
         add_gate(gates, "final_rag_validation", "Final RAG validation", False, "skipped until full index is complete", skipped=True)
 
-    actionable_gates = [gate for gate in gates if not gate["skipped"]]
+    skipped_gates = [gate for gate in gates if gate["skipped"]]
     all_ok = all(gate["ok"] for gate in gates)
-    complete = all_ok and bool(actionable_gates)
+    complete = all_ok and not skipped_gates
     return {
         "complete": complete,
         "gates": gates,
+        "skipped_gates": [gate["key"] for gate in skipped_gates],
         "index": {
             "downloaded_files": status.downloaded_files,
             "expected_files": status.expected_files,

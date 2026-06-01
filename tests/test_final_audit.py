@@ -122,11 +122,53 @@ class FinalAuditTests(unittest.TestCase):
         )
         with patch.object(final_audit, "read_index_status", return_value=status), patch.object(
             final_audit, "check_omlx", return_value=(True, "ok")
-        ), patch.object(final_audit, "run_final_validation", return_value=(True, "Validation OK")) as validate:
-            payload = final_audit.audit_payload(skip_app=True, skip_rag=True)
+        ), patch.object(final_audit, "run_app_smoke", return_value=(True, "app ok")), patch.object(
+            final_audit, "run_final_validation", return_value=(True, "Validation OK")
+        ) as validate:
+            payload = final_audit.audit_payload(skip_app=False, skip_rag=True)
+
+        self.assertFalse(payload["complete"])
+        self.assertIn("rag_generation", payload["skipped_gates"])
+        validate.assert_called_once_with(True)
+
+    def test_audit_payload_is_complete_only_when_no_gate_is_skipped(self):
+        status = IndexStatus(
+            downloaded_files=2,
+            expected_files=2,
+            indexed_files=2,
+            in_progress_files=0,
+            indexed_docs=10,
+            indexed_chunks=20,
+            in_progress_names=(),
+        )
+        with patch.object(final_audit, "read_index_status", return_value=status), patch.object(
+            final_audit, "check_omlx", return_value=(True, "ok")
+        ), patch.object(final_audit, "run_app_smoke", return_value=(True, "app ok")), patch.object(
+            final_audit, "run_final_validation", return_value=(True, "Validation OK")
+        ) as validate:
+            payload = final_audit.audit_payload(skip_app=False, skip_rag=False)
 
         self.assertTrue(payload["complete"])
-        validate.assert_called_once_with(True)
+        self.assertEqual(payload["skipped_gates"], [])
+        validate.assert_called_once_with(False)
+
+    def test_audit_payload_is_not_complete_when_app_is_skipped(self):
+        status = IndexStatus(
+            downloaded_files=2,
+            expected_files=2,
+            indexed_files=2,
+            in_progress_files=0,
+            indexed_docs=10,
+            indexed_chunks=20,
+            in_progress_names=(),
+        )
+        with patch.object(final_audit, "read_index_status", return_value=status), patch.object(
+            final_audit, "check_omlx", return_value=(True, "ok")
+        ), patch.object(final_audit, "run_final_validation", return_value=(True, "Validation OK")):
+            payload = final_audit.audit_payload(skip_app=True, skip_rag=False)
+
+        self.assertFalse(payload["complete"])
+        self.assertIn("streamlit_app", payload["skipped_gates"])
 
 
 if __name__ == "__main__":
