@@ -179,6 +179,7 @@ def progress_payload() -> dict:
     remaining = max(0, status.expected_files - status.indexed_files)
     eta = remaining / rate if rate else None
     eta_at = now + timedelta(seconds=eta) if eta is not None else None
+    eta_at_local = eta_at.astimezone() if eta_at else None
     manifest_age = file_age_seconds(default_manifest_path(ROOT), now)
     stale_after = stale_seconds()
     log_age = file_age_seconds(index_log_path(ROOT), now)
@@ -206,6 +207,7 @@ def progress_payload() -> dict:
         "rate_files_per_minute": rate * 60 if rate else None,
         "eta_seconds": eta,
         "eta_at_utc": eta_at.isoformat() if eta_at else None,
+        "eta_at_local": eta_at_local.isoformat() if eta_at_local else None,
         "manifest_age_seconds": manifest_age,
         "index_log_age_seconds": log_age,
         "stale_seconds": stale_after,
@@ -235,6 +237,8 @@ def print_human(payload: dict) -> None:
     print(f"ETA: {human_duration(payload['eta_seconds'])}")
     if payload.get("eta_at_utc"):
         print(f"Estimated completion UTC: {payload['eta_at_utc']}")
+    if payload.get("eta_at_local"):
+        print(f"Estimated completion local: {payload['eta_at_local']}")
     manifest_age = payload["manifest_age_seconds"]
     log_age = payload["index_log_age_seconds"]
     print(f"Manifest updated: {human_duration(manifest_age)} ago" if manifest_age is not None else "Manifest updated: unknown")
