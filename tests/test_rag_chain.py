@@ -1,4 +1,6 @@
 import os
+import sqlite3
+import tempfile
 import unittest
 from unittest.mock import patch
 
@@ -57,6 +59,48 @@ class RagChainTests(unittest.TestCase):
                         rag_chain.get_retriever().invoke({"input": "flight logs"})
 
         search.assert_called_once_with("flight logs", rag_chain.DEFAULT_RETRIEVER_K)
+
+    def test_sqlite_fts_search_joins_hits_by_embedding_id(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            db_path = os.path.join(tmpdir, "chroma.sqlite3")
+            with sqlite3.connect(db_path) as connection:
+                connection.executescript(
+                    """
+                    CREATE VIRTUAL TABLE embedding_fulltext_search USING fts5(string_value, tokenize='trigram');
+                    CREATE TABLE embedding_metadata (
+                        id INTEGER,
+                        key TEXT NOT NULL,
+                        string_value TEXT,
+                        int_value INTEGER,
+                        float_value REAL,
+                        bool_value INTEGER,
+                        PRIMARY KEY (id, key)
+                    );
+                    INSERT INTO embedding_fulltext_search(rowid, string_value)
+                    VALUES (42, 'Epstein Boeing aircraft evidence');
+                    INSERT INTO embedding_metadata(id, key, string_value)
+                    VALUES (99, 'chroma:document', 'wrong rowid document');
+                    INSERT INTO embedding_metadata(id, key, string_value)
+                    VALUES (42, 'chroma:document', 'right embedding document');
+                    INSERT INTO embedding_metadata(id, key, string_value)
+                    VALUES (42, 'source', 'epstein_files-test.parquet');
+                    INSERT INTO embedding_metadata(id, key, string_value)
+                    VALUES (42, 'original_filename', 'source.pdf');
+                    INSERT INTO embedding_metadata(id, key, int_value)
+                    VALUES (42, 'row_number', 7);
+                    """
+                )
+
+            with patch.object(rag_chain, "DB_DIR", tmpdir):
+                docs = rag_chain._sqlite_fts_search("Epstein aircraft", 3)
+
+        self.assertEqual(len(docs), 1)
+        self.assertEqual(docs[0].page_content, "right embedding document")
+        self.assertEqual(docs[0].metadata["source"], "epstein_files-test.parquet")
+        self.assertEqual(docs[0].metadata["row_number"], 7)
+
+    def test_fts_terms_keeps_epstein_as_query_anchor(self):
+        self.assertEqual(rag_chain._fts_terms("What aircraft did Epstein use?"), ["aircraft", "epstein", "use"])
 
 
 if __name__ == "__main__":

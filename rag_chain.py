@@ -21,9 +21,9 @@ DEFAULT_EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
 DEFAULT_RETRIEVER_K = 12
 DEFAULT_RETRIEVER_FETCH_K = 80
 FTS_STOPWORDS = {
-    "about", "after", "also", "and", "are", "can", "did", "does", "epstein", "for", "from",
+    "about", "after", "also", "and", "are", "can", "did", "does", "for", "from",
     "had", "has", "have", "how", "into", "name", "not", "the", "their", "them",
-    "jeffrey", "there", "this", "used", "was", "were", "what", "when", "where", "which",
+    "there", "this", "used", "was", "were", "what", "when", "where", "which",
     "who", "why", "with", "would",
 }
 
@@ -143,7 +143,7 @@ def _sqlite_fts_search(query: str, k: int) -> list[Document]:
             COALESCE(row_number.int_value, 0) AS row_number
         FROM embedding_fulltext_search fts
         JOIN embedding_metadata doc
-            ON doc.rowid = fts.rowid
+            ON doc.id = fts.rowid
             AND doc.key = 'chroma:document'
         LEFT JOIN embedding_metadata source
             ON source.id = doc.id
