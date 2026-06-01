@@ -4,6 +4,8 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+from index_state import IndexStatus
+
 
 ROOT = Path(__file__).resolve().parents[1]
 SPEC = importlib.util.spec_from_file_location("final_audit", ROOT / "scripts" / "final_audit.py")
@@ -53,6 +55,45 @@ class FinalAuditTests(unittest.TestCase):
 
         self.assertFalse(ok)
         self.assertEqual(detail, "app failed")
+
+    def test_audit_payload_reports_incomplete_index(self):
+        status = IndexStatus(
+            downloaded_files=2,
+            expected_files=2,
+            indexed_files=1,
+            in_progress_files=1,
+            indexed_docs=10,
+            indexed_chunks=20,
+            in_progress_names=("epstein_files-0001.parquet",),
+        )
+        with patch.object(final_audit, "read_index_status", return_value=status), patch.object(
+            final_audit, "check_omlx", return_value=(True, "ok")
+        ):
+            payload = final_audit.audit_payload(skip_app=True)
+
+        self.assertFalse(payload["complete"])
+        self.assertEqual(payload["index"]["indexed_files"], 1)
+        self.assertEqual(payload["gates"][1]["key"], "full_index")
+        self.assertFalse(payload["gates"][1]["ok"])
+        self.assertTrue(payload["gates"][-1]["skipped"])
+
+    def test_audit_payload_runs_validation_after_complete_index(self):
+        status = IndexStatus(
+            downloaded_files=2,
+            expected_files=2,
+            indexed_files=2,
+            in_progress_files=0,
+            indexed_docs=10,
+            indexed_chunks=20,
+            in_progress_names=(),
+        )
+        with patch.object(final_audit, "read_index_status", return_value=status), patch.object(
+            final_audit, "check_omlx", return_value=(True, "ok")
+        ), patch.object(final_audit, "run_final_validation", return_value=(True, "Validation OK")) as validate:
+            payload = final_audit.audit_payload(skip_app=True, skip_rag=True)
+
+        self.assertTrue(payload["complete"])
+        validate.assert_called_once_with(True)
 
 
 if __name__ == "__main__":
