@@ -94,8 +94,9 @@ def check_data_index() -> None:
 
 
 def check_retrieval() -> None:
-    if read_index_status(data_dir=DATA_DIR, manifest_path=MANIFEST_PATH, root=ROOT).indexing_active:
-        status("Retrieval", True, "skipped while indexing is active")
+    index_status = read_index_status(data_dir=DATA_DIR, manifest_path=MANIFEST_PATH, root=ROOT)
+    if not index_status.complete:
+        status("Retrieval", True, "skipped until full index is complete")
         return
     try:
         from rag_chain import get_vectorstore

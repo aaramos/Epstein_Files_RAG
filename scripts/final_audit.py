@@ -20,6 +20,7 @@ from llm_factory import _get_omlx_api_key
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Audit whether the Mac Studio RAG conversion is complete.")
     parser.add_argument("--allow-incomplete", action="store_true", help="Report incomplete gates without failing.")
+    parser.add_argument("--skip-app", action="store_true", help="Skip Streamlit app launch smoke test.")
     parser.add_argument("--skip-rag", action="store_true", help="Skip final retrieval and oMLX generation validation.")
     return parser.parse_args()
 
@@ -50,6 +51,12 @@ def run_final_validation(skip_rag: bool) -> tuple[bool, str]:
     return result.returncode == 0, output or "validation produced no output"
 
 
+def run_app_smoke() -> tuple[bool, str]:
+    result = subprocess.run(["scripts/smoke_app.sh"], cwd=ROOT, text=True, capture_output=True)
+    output = "\n".join(part for part in (result.stdout.strip(), result.stderr.strip()) if part)
+    return result.returncode == 0, output or "app smoke produced no output"
+
+
 def print_gate(ok: bool, label: str, detail: str) -> None:
     marker = "OK" if ok else "WAIT"
     print(f"[{marker}] {label}: {detail}")
@@ -75,6 +82,15 @@ def main() -> None:
     omlx_ok, omlx_detail = check_omlx()
     gates.append(omlx_ok)
     print_gate(omlx_ok, "oMLX", omlx_detail)
+
+    if args.skip_app:
+        print_gate(True, "Streamlit app", "skipped")
+    else:
+        app_ok, app_detail = run_app_smoke()
+        gates.append(app_ok)
+        print_gate(app_ok, "Streamlit app", app_detail.splitlines()[0])
+        if not app_ok:
+            print(app_detail)
 
     if index_ok:
         validation_ok, validation_detail = run_final_validation(args.skip_rag)

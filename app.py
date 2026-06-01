@@ -68,8 +68,8 @@ if index_status.indexed_chunks:
     st.sidebar.caption(f"{index_status.indexed_docs:,} documents / {index_status.indexed_chunks:,} chunks")
 if not index_status.indexed_chunks:
     st.sidebar.warning("Index is empty. Run `scripts/index_full_native.sh` before asking questions.")
-elif index_status.indexing_active and not allow_query_during_index:
-    st.sidebar.warning("Questions are paused while the indexer is writing to Chroma. Set APP_ALLOW_QUERY_DURING_INDEX=1 to allow partial-index queries.")
+elif index_status.partial and not allow_query_during_index:
+    st.sidebar.warning("Questions are paused until the full index is complete. Set APP_ALLOW_QUERY_DURING_INDEX=1 to allow partial-index queries.")
 elif index_status.downloaded_files and index_status.indexed_files < index_status.downloaded_files:
     st.sidebar.info("The app can answer from the partial index while full indexing continues.")
 

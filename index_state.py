@@ -27,6 +27,10 @@ class IndexStatus:
     def complete(self) -> bool:
         return self.indexed_files >= self.expected_files and not self.indexing_active
 
+    @property
+    def partial(self) -> bool:
+        return self.indexed_files < self.expected_files
+
 
 def env_flag(name: str, default: bool = False) -> bool:
     value = os.getenv(name)
@@ -86,4 +90,4 @@ def read_index_status(
 
 
 def query_enabled(status: IndexStatus, allow_during_index: bool = False) -> bool:
-    return bool(status.indexed_chunks) and (allow_during_index or not status.indexing_active)
+    return bool(status.indexed_chunks) and (allow_during_index or status.complete)

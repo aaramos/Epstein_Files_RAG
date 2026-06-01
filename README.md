@@ -68,6 +68,7 @@ To run a Mac readiness check:
 
 ```bash
 scripts/doctor.sh
+scripts/smoke_app.sh
 scripts/validate_rag.sh
 # Include a short oMLX generation call:
 scripts/validate_rag.sh --rag
@@ -103,17 +104,19 @@ Useful local generation knobs:
 - `OMLX_TIMEOUT_SECONDS`: request timeout for local oMLX calls.
 - `LLM_TEMPERATURE`: shared temperature setting for all providers.
 - `APP_ALLOW_QUERY_DURING_INDEX`: defaults to `0` so the Streamlit app pauses
-  questions while Chroma is actively being written. Set it to `1` only if you
-  want to query the partial index during ingestion.
+  questions until the full Chroma index is complete. Set it to `1` only if you
+  want to query the partial index during ingestion and accept possible Chroma
+  read/write errors.
 
 After the full corpus finishes indexing, run `make final-validate`. It fails
 until all expected parquet files are indexed, then performs retrieval plus a
 short oMLX generation check.
 
 For a one-command completion gate, run `make final-audit`. It checks dataset
-presence, full-index completion, oMLX reachability, and final RAG validation.
-While indexing is still running, use `scripts/final_audit.sh --allow-incomplete`
-to see the current gate state without failing the command.
+presence, full-index completion, oMLX reachability, Streamlit launch readiness,
+and final RAG validation. While indexing is still running, use
+`scripts/final_audit.sh --allow-incomplete` to see the current gate state
+without failing the command.
 
 For unattended completion, run `make wait`. It prints progress on an interval
 and automatically runs final validation when the manifest shows all files are
