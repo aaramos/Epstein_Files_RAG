@@ -55,6 +55,8 @@ To check progress without importing the ML stack:
 # or
 scripts/status.sh
 scripts/progress.sh
+# Poll until indexing is complete, then run final validation:
+make wait
 ```
 
 To run a Mac readiness check:
@@ -68,7 +70,7 @@ scripts/benchmark.sh
 ```
 
 The same commands are exposed as Make targets: `make status`, `make progress`,
-`make validate`, `make validate-rag`, `make final-validate`,
+`make wait`, `make validate`, `make validate-rag`, `make final-validate`,
 `make benchmark`, `make test`, and `make check`.
 
 This fork also includes `constraints-macos-arm64.txt`, a known-good constraints
@@ -96,6 +98,10 @@ Useful local generation knobs:
 After the full corpus finishes indexing, run `make final-validate`. It fails
 until all expected parquet files are indexed, then performs retrieval plus a
 short oMLX generation check.
+
+For unattended completion, run `make wait`. It prints progress on an interval
+and automatically runs final validation when the manifest shows all files are
+indexed. Set `RUN_FINAL_VALIDATE=0 make wait` to only wait and report completion.
 
 ### Docker
 The app can run in Docker Compose and connect back to host oMLX:

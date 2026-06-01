@@ -1,6 +1,6 @@
 PYTHON ?= .venv/bin/python
 
-.PHONY: setup doctor status progress validate validate-rag final-validate benchmark test check run index download docker-up
+.PHONY: setup doctor status progress wait validate validate-rag final-validate benchmark test check run index download docker-up
 
 setup:
 	scripts/setup_macos.sh
@@ -13,6 +13,9 @@ status:
 
 progress:
 	scripts/progress.sh
+
+wait:
+	scripts/wait_for_index.sh
 
 validate:
 	scripts/validate_rag.sh
