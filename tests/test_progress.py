@@ -40,6 +40,16 @@ class ProgressTests(unittest.TestCase):
             (data_dir / "epstein_files-0000.parquet").touch()
             manifest_path = root / "manifest.json"
             log_path = root / "index.log"
+            lock_path = root / "index.lock"
+            lock_path.write_text(
+                json.dumps(
+                    {
+                        "pid": os.getpid(),
+                        "command": "python ingest.py",
+                        "created_at": "2026-01-01T00:00:00+00:00",
+                    }
+                )
+            )
             manifest_path.write_text(
                 json.dumps(
                     {
@@ -61,6 +71,7 @@ class ProgressTests(unittest.TestCase):
                 "DATA_PATH": str(data_dir),
                 "INGEST_MANIFEST_PATH": str(manifest_path),
                 "INDEX_LOG_PATH": str(log_path),
+                "INDEX_LOCK_PATH": str(lock_path),
                 "INDEX_STALE_SECONDS": "60",
                 "EXPECTED_PARQUET_FILES": "2",
             }
@@ -76,6 +87,9 @@ class ProgressTests(unittest.TestCase):
         self.assertEqual(payload["indexer_process_count"], 1)
         self.assertFalse(payload["indexer_process_missing"])
         self.assertTrue(payload["indexer_process_scan_available"])
+        self.assertTrue(payload["index_lock"]["present"])
+        self.assertEqual(payload["index_lock"]["pid"], os.getpid())
+        self.assertTrue(payload["index_lock"]["pid_alive"])
 
     def test_payload_reports_missing_indexer_process(self):
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -133,6 +147,35 @@ class ProgressTests(unittest.TestCase):
 
         self.assertFalse(payload["indexer_process_scan_available"])
         self.assertFalse(payload["indexer_process_missing"])
+
+    def test_lock_payload_reports_missing_lock(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            env = {"INDEX_LOCK_PATH": str(Path(tmpdir) / "missing.lock")}
+            with patch.dict(os.environ, env, clear=False):
+                payload = progress.lock_payload(progress.datetime.now(progress.timezone.utc))
+
+        self.assertFalse(payload["present"])
+        self.assertFalse(payload["pid_alive"])
+
+    def test_lock_payload_reports_stale_lock(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            lock_path = Path(tmpdir) / "index.lock"
+            lock_path.write_text(
+                json.dumps(
+                    {
+                        "pid": 999999999,
+                        "command": "old index",
+                        "created_at": "2026-01-01T00:00:00+00:00",
+                    }
+                )
+            )
+            env = {"INDEX_LOCK_PATH": str(lock_path)}
+            with patch.dict(os.environ, env, clear=False):
+                payload = progress.lock_payload(progress.datetime.now(progress.timezone.utc))
+
+        self.assertTrue(payload["present"])
+        self.assertFalse(payload["pid_alive"])
+        self.assertTrue(payload["stale"])
 
 
 if __name__ == "__main__":

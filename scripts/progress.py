@@ -10,11 +10,15 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
+SCRIPTS_DIR = Path(__file__).resolve().parent
 
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
+if str(SCRIPTS_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPTS_DIR))
 
 from index_state import default_manifest_path, load_manifest, read_index_status
+from index_lock import process_alive, read_lock
 
 
 def parse_args() -> argparse.Namespace:
@@ -54,6 +58,10 @@ def file_age_seconds(path: Path, now: datetime) -> float | None:
 
 def index_log_path(root: Path = ROOT) -> Path:
     return Path(os.getenv("INDEX_LOG_PATH", str(root / "runtime" / "index_full.log")))
+
+
+def index_lock_path(root: Path = ROOT) -> Path:
+    return Path(os.getenv("INDEX_LOCK_PATH", str(root / "runtime" / "index_full.lock")))
 
 
 def stale_seconds() -> int:
@@ -112,6 +120,37 @@ def parse_process_lines(lines) -> list[dict]:
     return processes
 
 
+def lock_payload(now: datetime) -> dict:
+    path = index_lock_path(ROOT)
+    payload = read_lock(path)
+    if not isinstance(payload, dict):
+        return {
+            "path": str(path),
+            "present": False,
+            "pid": None,
+            "command": None,
+            "created_at": None,
+            "age_seconds": None,
+            "pid_alive": False,
+            "stale": False,
+        }
+
+    pid = payload.get("pid")
+    created_at = parse_time(payload.get("created_at"))
+    age = (now - created_at).total_seconds() if created_at else None
+    pid_alive = process_alive(pid) if isinstance(pid, int) else False
+    return {
+        "path": str(path),
+        "present": True,
+        "pid": pid if isinstance(pid, int) else None,
+        "command": payload.get("command"),
+        "created_at": payload.get("created_at"),
+        "age_seconds": age,
+        "pid_alive": pid_alive,
+        "stale": not pid_alive,
+    }
+
+
 def progress_payload() -> dict:
     manifest = load_manifest(default_manifest_path(ROOT))
     status = read_index_status(root=ROOT)
@@ -142,6 +181,7 @@ def progress_payload() -> dict:
     processes, process_scan_available = scan_indexer_processes()
     process_missing = bool(status.indexing_active and process_scan_available and not processes)
     stale = bool(status.indexing_active and log_age is not None and log_age > stale_after)
+    lock = lock_payload(now)
 
     return {
         "downloaded_files": status.downloaded_files,
@@ -165,6 +205,7 @@ def progress_payload() -> dict:
         "indexer_processes": processes,
         "indexer_process_missing": process_missing,
         "indexer_process_scan_available": process_scan_available,
+        "index_lock": lock,
     }
 
 
@@ -192,6 +233,16 @@ def print_human(payload: dict) -> None:
         print("Indexer processes: none")
     if payload["indexer_process_missing"]:
         print("Warning: manifest shows active indexing but no ingest.py process was found")
+    lock = payload["index_lock"]
+    if lock["present"]:
+        alive = "alive" if lock["pid_alive"] else "not alive"
+        print(f"Index lock: PID {lock['pid']} ({alive}), age {human_duration(lock['age_seconds'])}")
+    else:
+        print("Index lock: none")
+    if payload["indexing_active"] and not lock["present"]:
+        print("Warning: manifest shows active indexing but no index lock was found")
+    if lock["stale"]:
+        print("Warning: index lock PID is not running")
     if payload["stale"]:
         print(f"Warning: index log has been quiet for more than {human_duration(payload['stale_seconds'])}")
 

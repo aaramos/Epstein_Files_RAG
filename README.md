@@ -67,7 +67,9 @@ active indexer has not written to `runtime/index_full.log` for more than
 `INDEX_STALE_SECONDS` seconds, it prints a warning. Use
 `scripts/progress.sh --json` for machine-readable monitor output. The progress
 report also lists live `ingest.py` process IDs and warns if the manifest says
-indexing is active but no indexer process is running.
+indexing is active but no indexer process is running. When process scanning is
+unavailable, it still reports `runtime/index_full.lock` ownership and whether
+the lock PID is alive.
 
 To run a Mac readiness check:
 
