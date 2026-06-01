@@ -24,6 +24,7 @@ from index_lock import process_alive, read_lock
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Report local download and Chroma index progress.")
     parser.add_argument("--json", action="store_true", help="Emit machine-readable JSON.")
+    parser.add_argument("--fail-stale", action="store_true", help="Exit non-zero when active indexing appears stalled or orphaned.")
     return parser.parse_args()
 
 
@@ -247,13 +248,30 @@ def print_human(payload: dict) -> None:
         print(f"Warning: index log has been quiet for more than {human_duration(payload['stale_seconds'])}")
 
 
+def stale_failure_reason(payload: dict) -> str | None:
+    if payload["stale"]:
+        return f"index log has been quiet for more than {human_duration(payload['stale_seconds'])}"
+    if payload["indexer_process_missing"]:
+        return "manifest shows active indexing but no ingest.py process was found"
+    lock = payload["index_lock"]
+    if payload["indexing_active"] and not lock["present"]:
+        return "manifest shows active indexing but no index lock was found"
+    if lock["stale"]:
+        return "index lock PID is not running"
+    return None
+
+
 def main() -> None:
     args = parse_args()
     payload = progress_payload()
     if args.json:
         print(json.dumps(payload, indent=2, sort_keys=True))
-        return
-    print_human(payload)
+    else:
+        print_human(payload)
+    if args.fail_stale:
+        reason = stale_failure_reason(payload)
+        if reason:
+            raise SystemExit(f"Index progress is stale: {reason}")
 
 
 if __name__ == "__main__":

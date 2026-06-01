@@ -177,6 +177,39 @@ class ProgressTests(unittest.TestCase):
         self.assertFalse(payload["pid_alive"])
         self.assertTrue(payload["stale"])
 
+    def test_stale_failure_reason_reports_quiet_log_first(self):
+        payload = {
+            "stale": True,
+            "stale_seconds": 60,
+            "indexer_process_missing": True,
+            "indexing_active": True,
+            "index_lock": {"present": True, "stale": False},
+        }
+
+        self.assertIn("quiet", progress.stale_failure_reason(payload))
+
+    def test_stale_failure_reason_reports_missing_lock(self):
+        payload = {
+            "stale": False,
+            "stale_seconds": 60,
+            "indexer_process_missing": False,
+            "indexing_active": True,
+            "index_lock": {"present": False, "stale": False},
+        }
+
+        self.assertIn("no index lock", progress.stale_failure_reason(payload))
+
+    def test_stale_failure_reason_allows_healthy_payload(self):
+        payload = {
+            "stale": False,
+            "stale_seconds": 60,
+            "indexer_process_missing": False,
+            "indexing_active": True,
+            "index_lock": {"present": True, "stale": False},
+        }
+
+        self.assertIsNone(progress.stale_failure_reason(payload))
+
 
 if __name__ == "__main__":
     unittest.main()

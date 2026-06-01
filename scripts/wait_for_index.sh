@@ -8,7 +8,7 @@ RUN_FINAL_AUDIT="${RUN_FINAL_AUDIT:-1}"
 RUN_FINAL_VALIDATE="${RUN_FINAL_VALIDATE:-1}"
 
 while true; do
-  .venv/bin/python scripts/progress.py
+  .venv/bin/python scripts/progress.py --fail-stale
 
   if .venv/bin/python - <<'PY'
 from index_state import read_index_status
