@@ -73,9 +73,23 @@ def release_lock(path: Path, pid: int) -> None:
         pass
 
 
+def release_stale_lock(path: Path) -> bool:
+    existing = read_lock(path)
+    if not isinstance(existing, dict):
+        return False
+    pid = existing.get("pid")
+    if isinstance(pid, int) and process_alive(pid):
+        return False
+    try:
+        path.unlink()
+    except FileNotFoundError:
+        return False
+    return True
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Coordinate a single native full-index process.")
-    parser.add_argument("action", choices=("acquire", "release"))
+    parser.add_argument("action", choices=("acquire", "release", "release-stale"))
     parser.add_argument("path")
     parser.add_argument("--pid", type=int, default=os.getpid())
     parser.add_argument("--command", default=" ".join(sys.argv))
@@ -87,8 +101,11 @@ def main() -> None:
     path = Path(args.path)
     if args.action == "acquire":
         acquire_lock(path, args.pid, args.command)
-    else:
+    elif args.action == "release":
         release_lock(path, args.pid)
+    else:
+        if release_stale_lock(path):
+            print(f"Released stale index lock at {path}")
 
 
 if __name__ == "__main__":

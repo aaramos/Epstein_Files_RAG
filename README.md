@@ -146,9 +146,11 @@ never count as proof that the Mac conversion is complete.
 
 For unattended completion, run `make wait`. It prints progress on an interval
 and automatically runs the full final audit when the manifest shows all files
-are indexed. Set `RUN_FINAL_AUDIT=0 make wait` to run only the older final RAG
-validation path, or `RUN_FINAL_AUDIT=0 RUN_FINAL_VALIDATE=0 make wait` to only
-wait and report completion.
+are indexed. It also removes a stale `runtime/index_full.lock` before the final
+audit, which is useful if an older pre-lock indexer finished successfully. Set
+`RUN_FINAL_AUDIT=0 make wait` to run only the older final RAG validation path,
+or `RUN_FINAL_AUDIT=0 RUN_FINAL_VALIDATE=0 make wait` to only wait and report
+completion.
 
 ### Docker
 The app can run in Docker Compose and connect back to host oMLX:

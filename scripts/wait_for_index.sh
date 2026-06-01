@@ -17,6 +17,7 @@ raise SystemExit(0 if read_index_status().complete else 1)
 PY
   then
     echo "Full index is complete."
+    .venv/bin/python scripts/index_lock.py release-stale "${INDEX_LOCK_PATH:-runtime/index_full.lock}"
     if [[ "$RUN_FINAL_AUDIT" == "1" ]]; then
       scripts/final_audit.sh
     elif [[ "$RUN_FINAL_VALIDATE" == "1" ]]; then

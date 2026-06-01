@@ -54,6 +54,22 @@ class IndexLockTests(unittest.TestCase):
 
             self.assertTrue(lock_path.exists())
 
+    def test_release_stale_removes_dead_owner_lock(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            lock_path = Path(tmpdir) / "index.lock"
+            lock_path.write_text('{"pid": 999999999, "command": "old"}')
+
+            self.assertTrue(index_lock.release_stale_lock(lock_path))
+            self.assertFalse(lock_path.exists())
+
+    def test_release_stale_keeps_live_owner_lock(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            lock_path = Path(tmpdir) / "index.lock"
+            index_lock.acquire_lock(lock_path, os.getpid(), "index")
+
+            self.assertFalse(index_lock.release_stale_lock(lock_path))
+            self.assertTrue(lock_path.exists())
+
 
 if __name__ == "__main__":
     unittest.main()
