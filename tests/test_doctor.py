@@ -30,6 +30,15 @@ class DoctorTests(unittest.TestCase):
         self.assertFalse(ok)
         self.assertIn("5.0 GB free", detail)
 
+    def test_check_mac_artifacts_reports_docker_and_launchd(self):
+        with patch.object(doctor, "check_docker_assets", return_value=(True, "docker ok")), patch.object(
+            doctor, "run_launchd_validation", return_value=(True, "launchd ok\nsecond line")
+        ), patch.object(doctor, "status") as status:
+            doctor.check_mac_artifacts()
+
+        status.assert_any_call("Docker assets", True, "docker ok")
+        status.assert_any_call("LaunchAgent templates", True, "launchd ok")
+
 
 if __name__ == "__main__":
     unittest.main()

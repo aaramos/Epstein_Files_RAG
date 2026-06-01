@@ -11,14 +11,18 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
+SCRIPTS_DIR = Path(__file__).resolve().parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
+if str(SCRIPTS_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPTS_DIR))
 DATA_DIR = Path(os.getenv("DATA_PATH", str(ROOT / "data")))
 DB_DIR = Path(os.getenv("DB_PATH", str(ROOT / "chroma_db")))
 MANIFEST_PATH = Path(os.getenv("INGEST_MANIFEST_PATH", str(DB_DIR / "ingest_manifest.json")))
 
 from index_state import load_manifest, read_index_status
 from llm_factory import get_omlx_base_url, get_omlx_model_name
+from final_audit import check_docker_assets, run_launchd_validation
 
 
 def status(label: str, ok: bool, detail: str) -> None:
@@ -143,6 +147,13 @@ def check_container_runtime() -> None:
     status("Docker", docker, "installed" if docker else "not installed; compose files are present but not runnable locally")
 
 
+def check_mac_artifacts() -> None:
+    docker_ok, docker_detail = check_docker_assets()
+    status("Docker assets", docker_ok, docker_detail)
+    launchd_ok, launchd_detail = run_launchd_validation()
+    status("LaunchAgent templates", launchd_ok, launchd_detail.splitlines()[0])
+
+
 if __name__ == "__main__":
     check_python()
     check_imports()
@@ -153,3 +164,4 @@ if __name__ == "__main__":
     check_retrieval()
     check_ports()
     check_container_runtime()
+    check_mac_artifacts()

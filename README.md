@@ -89,9 +89,10 @@ scripts/validate_rag.sh --rag
 scripts/benchmark.sh
 ```
 
-`scripts/doctor.sh` also checks free disk space on the Chroma volume. The
-default minimum is `20` GB; override it with `MIN_FREE_DISK_GB` if your target
-volume needs a different threshold.
+`scripts/doctor.sh` also checks free disk space on the Chroma volume, Docker
+asset integrity, and LaunchAgent template validity. The default free-space
+minimum is `20` GB; override it with `MIN_FREE_DISK_GB` if your target volume
+needs a different threshold.
 `scripts/smoke_app.sh` starts Streamlit on a free localhost port by default so
 the final audit is not sensitive to another service already using `8501` or
 `8502`. Set `STREAMLIT_PORT` when you need to test a specific port.
