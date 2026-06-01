@@ -11,6 +11,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS_DIR = Path(__file__).resolve().parent
+SAMPLE_LIMIT = 5
 
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
@@ -194,7 +195,9 @@ def progress_payload() -> dict:
         "indexed_documents": status.indexed_docs,
         "indexed_chunks": status.indexed_chunks,
         "missing_indexed_files": len(status.missing_indexed_names),
+        "missing_indexed_sample": list(status.missing_indexed_names[:SAMPLE_LIMIT]),
         "unexpected_indexed_files": len(status.unexpected_indexed_names),
+        "unexpected_indexed_sample": list(status.unexpected_indexed_names[:SAMPLE_LIMIT]),
         "indexing_active": status.indexing_active,
         "complete": status.complete,
         "elapsed_seconds": elapsed,

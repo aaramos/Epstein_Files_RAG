@@ -166,6 +166,7 @@ class FinalAuditTests(unittest.TestCase):
             indexed_docs=10,
             indexed_chunks=20,
             in_progress_names=("epstein_files-0001.parquet",),
+            missing_indexed_names=("epstein_files-0001.parquet",),
         )
         with patch.object(final_audit, "read_index_status", return_value=status), patch.object(
             final_audit, "check_omlx", return_value=(True, "ok")
@@ -178,6 +179,9 @@ class FinalAuditTests(unittest.TestCase):
 
         self.assertFalse(payload["complete"])
         self.assertEqual(payload["index"]["indexed_files"], 1)
+        self.assertEqual(payload["index"]["missing_indexed_files"], 1)
+        self.assertEqual(payload["index"]["missing_indexed_sample"], ["epstein_files-0001.parquet"])
+        self.assertEqual(payload["index"]["unexpected_indexed_sample"], [])
         full_index_gate = next(gate for gate in payload["gates"] if gate["key"] == "full_index")
         self.assertFalse(full_index_gate["ok"])
         self.assertTrue(payload["gates"][-1]["skipped"])

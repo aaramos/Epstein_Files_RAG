@@ -23,6 +23,7 @@ from llm_factory import _get_omlx_api_key, get_omlx_base_url, get_omlx_model_nam
 
 
 DB_DIR = Path(os.getenv("DB_PATH", str(ROOT / "chroma_db")))
+SAMPLE_LIMIT = 5
 
 
 def parse_args() -> argparse.Namespace:
@@ -172,7 +173,9 @@ def audit_payload(skip_app: bool = False, skip_rag: bool = False) -> dict:
             "in_progress_files": status.in_progress_files,
             "indexed_chunks": status.indexed_chunks,
             "missing_indexed_files": len(status.missing_indexed_names),
+            "missing_indexed_sample": list(status.missing_indexed_names[:SAMPLE_LIMIT]),
             "unexpected_indexed_files": len(status.unexpected_indexed_names),
+            "unexpected_indexed_sample": list(status.unexpected_indexed_names[:SAMPLE_LIMIT]),
         },
     }
 

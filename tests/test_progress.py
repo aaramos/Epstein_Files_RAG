@@ -38,6 +38,7 @@ class ProgressTests(unittest.TestCase):
             data_dir = root / "data"
             data_dir.mkdir()
             (data_dir / "epstein_files-0000.parquet").touch()
+            (data_dir / "epstein_files-0001.parquet").touch()
             manifest_path = root / "manifest.json"
             log_path = root / "index.log"
             lock_path = root / "index.lock"
@@ -84,6 +85,9 @@ class ProgressTests(unittest.TestCase):
         self.assertTrue(payload["stale"])
         self.assertEqual(payload["stale_seconds"], 60)
         self.assertEqual(payload["indexed_chunks"], 4)
+        self.assertEqual(payload["missing_indexed_files"], 1)
+        self.assertEqual(payload["missing_indexed_sample"], ["epstein_files-0001.parquet"])
+        self.assertEqual(payload["unexpected_indexed_sample"], [])
         self.assertEqual(payload["indexer_process_count"], 1)
         self.assertFalse(payload["indexer_process_missing"])
         self.assertTrue(payload["indexer_process_scan_available"])
