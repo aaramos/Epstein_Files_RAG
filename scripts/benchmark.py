@@ -14,6 +14,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from index_state import DEFAULT_EXPECTED_FILES, read_index_status
 from rag_chain import get_rag_chain, get_vectorstore
 
 
@@ -30,6 +31,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--rag", action="store_true", help="Also benchmark LLM generation.")
     parser.add_argument("--provider", default=os.getenv("LLM_PROVIDER", "OMLX"))
     parser.add_argument("--model", default=os.getenv("OMLX_MODEL") or os.getenv("MORNING_DISPATCH_LIBRARIAN_MODEL", "Gemma4-MTP-26B-BF16"))
+    parser.add_argument("--allow-active-index", action="store_true", help="Allow querying Chroma while ingestion is actively writing.")
+    parser.add_argument("--expected-files", type=int, default=int(os.getenv("EXPECTED_PARQUET_FILES", str(DEFAULT_EXPECTED_FILES))))
     parser.add_argument("--json", action="store_true", help="Emit machine-readable JSON.")
     return parser.parse_args()
 
@@ -47,6 +50,15 @@ def collection_count(vectorstore) -> int | None:
         return int(vectorstore._collection.count())
     except Exception:
         return None
+
+
+def validate_safe_to_query(expected_files: int, allow_active_index: bool) -> None:
+    status = read_index_status(expected_count=expected_files, root=ROOT)
+    if status.indexing_active and not allow_active_index:
+        raise SystemExit(
+            "Indexing is active; skipping benchmark Chroma reads to avoid read/write errors. "
+            "Use --allow-active-index only for intentional stress testing."
+        )
 
 
 def run_retrieval(query: str) -> dict:
@@ -96,6 +108,7 @@ def summarize(results: list[dict]) -> dict:
 
 def main() -> None:
     args = parse_args()
+    validate_safe_to_query(args.expected_files, args.allow_active_index)
     queries = tuple(args.query or DEFAULT_QUERIES)
     vectorstore = get_vectorstore()
     retrieval = [run_retrieval(query) for query in queries]

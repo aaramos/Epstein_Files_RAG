@@ -26,6 +26,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--provider", default=os.getenv("LLM_PROVIDER", "OMLX"))
     parser.add_argument("--model", default=os.getenv("OMLX_MODEL") or os.getenv("MORNING_DISPATCH_LIBRARIAN_MODEL", "Gemma4-MTP-26B-BF16"))
     parser.add_argument("--require-full-index", action="store_true", help="Fail unless every expected parquet file is indexed and no file is in progress.")
+    parser.add_argument("--allow-active-index", action="store_true", help="Allow querying Chroma while ingestion is actively writing.")
     parser.add_argument("--expected-files", type=int, default=int(os.getenv("EXPECTED_PARQUET_FILES", str(DEFAULT_EXPECTED_FILES))))
     return parser.parse_args()
 
@@ -36,6 +37,15 @@ def validate_full_index(expected_files: int) -> None:
     print(f"In-progress files: {status.in_progress_files}")
     if not status.complete:
         raise SystemExit("Full index is not complete yet")
+
+
+def validate_safe_to_query(expected_files: int, allow_active_index: bool) -> None:
+    status = read_index_status(expected_count=expected_files, root=ROOT)
+    if status.indexing_active and not allow_active_index:
+        raise SystemExit(
+            "Indexing is active; skipping Chroma reads to avoid read/write errors. "
+            "Use --allow-active-index only for intentional stress testing."
+        )
 
 
 def validate_retrieval(query: str, min_docs: int) -> list:
@@ -81,6 +91,7 @@ if __name__ == "__main__":
     args = parse_args()
     if args.require_full_index:
         validate_full_index(args.expected_files)
+    validate_safe_to_query(args.expected_files, args.allow_active_index)
     validate_retrieval(args.query, args.min_docs)
     if args.rag:
         validate_rag(args.query, args.provider, args.model)

@@ -101,6 +101,9 @@ startup failures seen in headless/local-service runs.
 `make check` intentionally skips extra retrieval/benchmark passes while the full
 indexer is actively writing to Chroma. Use `CHECK_DURING_INDEX=1 make check`
 only when you explicitly want to stress concurrent read/write behavior.
+Direct validation and benchmark commands also refuse to query Chroma while an
+indexer is active. Pass `--allow-active-index` only when you intentionally want
+to test concurrent read/write behavior.
 
 Useful ingestion tuning knobs:
 
