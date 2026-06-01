@@ -19,15 +19,16 @@ PY
   then
     echo "Full index is complete."
     .venv/bin/python scripts/index_lock.py release-stale "${INDEX_LOCK_PATH:-runtime/index_full.lock}"
+    VALIDATION_STATUS=0
     if [[ "$RUN_FINAL_AUDIT" == "1" ]]; then
-      scripts/final_audit.sh
+      scripts/final_audit.sh || VALIDATION_STATUS="$?"
     elif [[ "$RUN_FINAL_VALIDATE" == "1" ]]; then
-      scripts/validate_rag.sh --require-full-index --rag
+      scripts/validate_rag.sh --require-full-index --rag || VALIDATION_STATUS="$?"
     fi
     if [[ "$RUN_COMPLETION_DIAGNOSTICS" == "1" ]]; then
       scripts/collect_diagnostics.sh
     fi
-    exit 0
+    exit "$VALIDATION_STATUS"
   fi
 
   echo "Waiting ${INTERVAL_SECONDS}s before next index check..."

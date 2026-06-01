@@ -37,6 +37,14 @@ class ShellScriptTests(unittest.TestCase):
         self.assertIn("run_capture final_audit scripts/final_audit.sh\n", script)
         self.assertIn("run_capture final_audit scripts/final_audit.sh --allow-incomplete --skip-app", script)
 
+    def test_wait_collects_diagnostics_after_validation_attempt(self):
+        script = (ROOT / "scripts" / "wait_for_index.sh").read_text()
+
+        self.assertIn("VALIDATION_STATUS=0", script)
+        self.assertIn('scripts/final_audit.sh || VALIDATION_STATUS="$?"', script)
+        self.assertIn("scripts/collect_diagnostics.sh", script)
+        self.assertIn('exit "$VALIDATION_STATUS"', script)
+
 
 if __name__ == "__main__":
     unittest.main()
