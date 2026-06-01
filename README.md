@@ -75,8 +75,8 @@ scripts/validate_rag.sh --rag
 scripts/benchmark.sh
 ```
 
-To collect a timestamped handoff bundle with progress, audit gates, LaunchAgent
-status/validation, git state, a manifest, and index log tails:
+To collect a timestamped handoff bundle with progress, audit gates, JSON audit
+state, LaunchAgent status/validation, git state, a manifest, and index log tails:
 
 ```bash
 make diagnostics

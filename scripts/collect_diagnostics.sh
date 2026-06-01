@@ -23,6 +23,7 @@ run_capture progress scripts/progress.sh
 run_capture progress_json scripts/progress.sh --json
 run_capture doctor scripts/doctor.sh
 run_capture final_audit scripts/final_audit.sh --allow-incomplete --skip-app
+run_capture final_audit_json scripts/final_audit.sh --allow-incomplete --skip-app --json
 run_capture launchd_status scripts/launchd_manage.sh status
 run_capture launchd_validate scripts/launchd_manage.sh validate
 
@@ -61,6 +62,7 @@ payload = {
     "notes": [
         "progress_json.txt contains machine-readable index progress",
         "final_audit.txt contains current completion gate state",
+        "final_audit_json.txt contains machine-readable completion gates",
         "index_full.tail.log contains the latest indexer log lines when available",
     ],
 }
