@@ -115,6 +115,15 @@ def add_gate(gates: list[dict], key: str, label: str, ok: bool, detail: str, ski
     gates.append({"key": key, "label": label, "ok": ok, "detail": detail, "skipped": skipped})
 
 
+def full_index_detail(status) -> str:
+    detail = f"{status.indexed_files}/{status.expected_files} files, {status.in_progress_files} in progress, {status.indexed_chunks:,} chunks"
+    if status.missing_indexed_names:
+        detail += f", {len(status.missing_indexed_names)} downloaded files not indexed"
+    if status.unexpected_indexed_names:
+        detail += f", {len(status.unexpected_indexed_names)} manifest entries missing from data"
+    return detail
+
+
 def audit_payload(skip_app: bool = False, skip_rag: bool = False) -> dict:
     clean_stale_index_lock()
     status = read_index_status(root=ROOT)
@@ -124,7 +133,7 @@ def audit_payload(skip_app: bool = False, skip_rag: bool = False) -> dict:
     add_gate(gates, "dataset", "Dataset", data_ok, f"{status.downloaded_files}/{status.expected_files} parquet files")
 
     index_ok = status.complete
-    add_gate(gates, "full_index", "Full index", index_ok, f"{status.indexed_files}/{status.expected_files} files, {status.in_progress_files} in progress, {status.indexed_chunks:,} chunks")
+    add_gate(gates, "full_index", "Full index", index_ok, full_index_detail(status))
 
     lock_ok, lock_detail = check_index_lock(status.indexing_active)
     add_gate(gates, "index_lock", "Index lock", lock_ok, lock_detail)
@@ -162,6 +171,8 @@ def audit_payload(skip_app: bool = False, skip_rag: bool = False) -> dict:
             "indexed_files": status.indexed_files,
             "in_progress_files": status.in_progress_files,
             "indexed_chunks": status.indexed_chunks,
+            "missing_indexed_files": len(status.missing_indexed_names),
+            "unexpected_indexed_files": len(status.unexpected_indexed_names),
         },
     }
 

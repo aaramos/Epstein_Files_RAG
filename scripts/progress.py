@@ -193,6 +193,8 @@ def progress_payload() -> dict:
         "in_progress_names": list(status.in_progress_names),
         "indexed_documents": status.indexed_docs,
         "indexed_chunks": status.indexed_chunks,
+        "missing_indexed_files": len(status.missing_indexed_names),
+        "unexpected_indexed_files": len(status.unexpected_indexed_names),
         "indexing_active": status.indexing_active,
         "complete": status.complete,
         "elapsed_seconds": elapsed,
@@ -217,6 +219,10 @@ def print_human(payload: dict) -> None:
     print(f"In progress: {', '.join(payload['in_progress_names']) if payload['in_progress_names'] else 'none'}")
     print(f"Indexed documents: {payload['indexed_documents']:,}")
     print(f"Indexed chunks: {payload['indexed_chunks']:,}")
+    if payload["missing_indexed_files"]:
+        print(f"Downloaded files not indexed: {payload['missing_indexed_files']}")
+    if payload["unexpected_indexed_files"]:
+        print(f"Manifest entries missing from data: {payload['unexpected_indexed_files']}")
     print(f"Elapsed: {human_duration(payload['elapsed_seconds'])}")
     rate = payload["rate_files_per_minute"]
     print(f"Rate: {rate:.2f} files/min" if rate else "Rate: unknown")

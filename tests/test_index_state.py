@@ -38,12 +38,16 @@ class IndexStateTests(unittest.TestCase):
         self.assertTrue(status.indexing_active)
         self.assertTrue(status.partial)
         self.assertFalse(status.complete)
+        self.assertEqual(status.missing_indexed_names, ("epstein_files-0002.parquet",))
+        self.assertEqual(status.unexpected_indexed_names, ())
 
     def test_query_enabled_pauses_until_complete_unless_allowed(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
             data_dir = root / "data"
             data_dir.mkdir()
+            (data_dir / "epstein_files-0000.parquet").touch()
+            (data_dir / "epstein_files-0001.parquet").touch()
             manifest_path = root / "manifest.json"
             manifest_path.write_text(
                 json.dumps(
@@ -63,6 +67,8 @@ class IndexStateTests(unittest.TestCase):
             root = Path(tmpdir)
             data_dir = root / "data"
             data_dir.mkdir()
+            (data_dir / "epstein_files-0000.parquet").touch()
+            (data_dir / "epstein_files-0001.parquet").touch()
             manifest_path = root / "manifest.json"
             manifest_path.write_text(
                 json.dumps(
@@ -79,6 +85,30 @@ class IndexStateTests(unittest.TestCase):
 
         self.assertTrue(status.complete)
         self.assertTrue(query_enabled(status))
+
+    def test_complete_rejects_unexpected_manifest_entries(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            data_dir = root / "data"
+            data_dir.mkdir()
+            (data_dir / "epstein_files-0000.parquet").touch()
+            manifest_path = root / "manifest.json"
+            manifest_path.write_text(
+                json.dumps(
+                    {
+                        "completed_files": {
+                            "epstein_files-0000.parquet": {"documents": 1, "chunks": 1},
+                            "epstein_files-0001.parquet": {"documents": 1, "chunks": 1},
+                        },
+                        "in_progress": {},
+                    }
+                )
+            )
+
+            status = read_index_status(data_dir=data_dir, manifest_path=manifest_path, expected_count=1)
+
+        self.assertFalse(status.complete)
+        self.assertEqual(status.unexpected_indexed_names, ("epstein_files-0001.parquet",))
 
     def test_env_flag_parses_common_true_values(self):
         with patch.dict("os.environ", {"APP_ALLOW_QUERY_DURING_INDEX": "yes"}):

@@ -18,6 +18,8 @@ class IndexStatus:
     indexed_docs: int
     indexed_chunks: int
     in_progress_names: tuple[str, ...]
+    missing_indexed_names: tuple[str, ...] = ()
+    unexpected_indexed_names: tuple[str, ...] = ()
 
     @property
     def indexing_active(self) -> bool:
@@ -25,7 +27,13 @@ class IndexStatus:
 
     @property
     def complete(self) -> bool:
-        return self.indexed_files >= self.expected_files and not self.indexing_active
+        return (
+            self.downloaded_files >= self.expected_files
+            and self.indexed_files >= self.expected_files
+            and not self.indexing_active
+            and not self.missing_indexed_names
+            and not self.unexpected_indexed_names
+        )
 
     @property
     def partial(self) -> bool:
@@ -74,9 +82,13 @@ def read_index_status(
     manifest = load_manifest(manifest_path)
     completed = manifest.get("completed_files", {})
     in_progress = manifest.get("in_progress", {})
-    downloaded_files = len(list(data_dir.glob("epstein_files-*.parquet")))
+    downloaded_names = {path.name for path in data_dir.glob("epstein_files-*.parquet")}
+    completed_names = set(completed)
+    downloaded_files = len(downloaded_names)
     indexed_docs = sum(item.get("documents", 0) for item in completed.values() if isinstance(item, dict))
     indexed_chunks = sum(item.get("chunks", 0) for item in completed.values() if isinstance(item, dict))
+    missing_indexed_names = tuple(sorted(downloaded_names - completed_names))
+    unexpected_indexed_names = tuple(sorted(completed_names - downloaded_names))
 
     return IndexStatus(
         downloaded_files=downloaded_files,
@@ -86,6 +98,8 @@ def read_index_status(
         indexed_docs=indexed_docs,
         indexed_chunks=indexed_chunks,
         in_progress_names=tuple(sorted(in_progress)),
+        missing_indexed_names=missing_indexed_names,
+        unexpected_indexed_names=unexpected_indexed_names,
     )
 
 
