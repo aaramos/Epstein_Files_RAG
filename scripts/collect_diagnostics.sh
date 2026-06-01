@@ -5,6 +5,7 @@ cd "$(dirname "$0")/.."
 
 STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
 OUT_DIR="${DIAGNOSTICS_DIR:-runtime/diagnostics/${STAMP}}"
+LATEST_LINK="${DIAGNOSTICS_LATEST_LINK:-runtime/diagnostics/latest}"
 
 mkdir -p "$OUT_DIR"
 
@@ -36,4 +37,11 @@ fi
 git status --short >"${OUT_DIR}/git_status.txt"
 git log --oneline -20 >"${OUT_DIR}/git_log.txt"
 
+if [[ -z "${DIAGNOSTICS_DIR:-}" ]]; then
+  ln -sfn "$(basename "$OUT_DIR")" "$LATEST_LINK"
+fi
+
 echo "Diagnostics written to ${OUT_DIR}"
+if [[ -z "${DIAGNOSTICS_DIR:-}" ]]; then
+  echo "Latest diagnostics link: ${LATEST_LINK}"
+fi

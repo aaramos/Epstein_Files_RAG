@@ -82,6 +82,9 @@ status/validation, git state, and index log tails:
 make diagnostics
 ```
 
+By default, diagnostics are written under `runtime/diagnostics/<timestamp>` and
+`runtime/diagnostics/latest` points to the newest bundle.
+
 The same commands are exposed as Make targets: `make status`, `make progress`,
 `make wait`, `make validate`, `make validate-rag`, `make final-validate`,
 `make benchmark`, `make test`, and `make check`.
