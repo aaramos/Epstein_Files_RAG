@@ -1,6 +1,6 @@
 PYTHON ?= .venv/bin/python
 
-.PHONY: setup doctor status progress wait validate validate-rag final-validate benchmark test check run index download docker-up
+.PHONY: setup doctor status progress wait validate validate-rag final-validate benchmark test check run index download docker-up launchd-install launchd-uninstall launchd-status
 
 setup:
 	scripts/setup_macos.sh
@@ -46,3 +46,12 @@ download:
 
 docker-up:
 	docker compose up --build
+
+launchd-install:
+	scripts/launchd_manage.sh install
+
+launchd-uninstall:
+	scripts/launchd_manage.sh uninstall
+
+launchd-status:
+	scripts/launchd_manage.sh status

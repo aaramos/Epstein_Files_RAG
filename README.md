@@ -126,6 +126,17 @@ then load it with `launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/<file
 The templates use this checkout path:
 `/Users/macstudio/Documents/RAG/Epstein_Files_RAG_macstudio`.
 
+You can also install the app and indexer LaunchAgents from the current checkout:
+
+```bash
+make launchd-install
+make launchd-status
+```
+
+Use `scripts/launchd_manage.sh install app` or `install indexer` to install
+only one service. The helper renders the plist files with the current checkout
+path and writes logs under `runtime/`.
+
 ### General Prerequisites
 - **Python 3.10+** (Recommend using a virtual environment).
 - **Ollama** (Optional): If you want to run LLMs completely locally. Download at [ollama.com](https://ollama.com/).
