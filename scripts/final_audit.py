@@ -255,6 +255,16 @@ def print_human(payload: dict) -> None:
         print_gate(gate["ok"], gate["label"], gate["detail"].splitlines()[0])
         if not gate["ok"] and "\n" in gate["detail"]:
             print(gate["detail"])
+    progress = payload.get("progress")
+    if progress:
+        rate = progress.get("rate_files_per_minute")
+        eta = human_duration(progress.get("eta_seconds"))
+        eta_local = progress.get("eta_at_local")
+        if rate:
+            print(f"[INFO] Index rate: {rate:.2f} files/min")
+        print(f"[INFO] Index ETA: {eta}")
+        if eta_local:
+            print(f"[INFO] Estimated completion local: {eta_local}")
 
 
 def main() -> None:

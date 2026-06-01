@@ -3,6 +3,7 @@ import os
 import subprocess
 import tempfile
 import unittest
+from io import StringIO
 from pathlib import Path
 from unittest.mock import Mock, patch
 
@@ -386,6 +387,27 @@ class FinalAuditTests(unittest.TestCase):
 
         self.assertFalse(payload["complete"])
         self.assertIn("streamlit_app", payload["skipped_gates"])
+
+    def test_print_human_includes_active_index_progress(self):
+        payload = {
+            "gates": [
+                {"ok": True, "label": "Dataset", "detail": "2/2 parquet files"},
+                {"ok": False, "label": "Full index", "detail": "1/2 files"},
+            ],
+            "progress": {
+                "rate_files_per_minute": 2.5,
+                "eta_seconds": 120,
+                "eta_at_local": "2026-05-31T21:00:00-07:00",
+            },
+        }
+
+        with patch("sys.stdout", new_callable=StringIO) as stdout:
+            final_audit.print_human(payload)
+
+        output = stdout.getvalue()
+        self.assertIn("Index rate: 2.50 files/min", output)
+        self.assertIn("Index ETA: 2m 0s", output)
+        self.assertIn("2026-05-31T21:00:00-07:00", output)
 
 
 if __name__ == "__main__":
