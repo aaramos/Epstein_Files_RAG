@@ -1,6 +1,6 @@
 PYTHON ?= .venv/bin/python
 
-.PHONY: setup doctor status progress watch wait wait-notify validate validate-rag final-validate final-audit partial-audit partial-audit-json smoke-app diagnostics benchmark test check run index download build-faiss faiss-progress chroma-rebuild chroma-vector docker-up launchd-install launchd-uninstall launchd-status launchd-validate
+.PHONY: setup doctor status progress watch wait wait-notify validate validate-rag final-validate final-audit partial-audit partial-audit-json smoke-app diagnostics benchmark test check run index download build-faiss faiss-progress validate-faiss chroma-rebuild chroma-vector docker-up launchd-install launchd-uninstall launchd-status launchd-validate
 
 setup:
 	scripts/setup_macos.sh
@@ -70,6 +70,9 @@ build-faiss:
 
 faiss-progress:
 	$(PYTHON) scripts/faiss_progress.py
+
+validate-faiss:
+	$(PYTHON) scripts/validate_faiss.py
 
 chroma-rebuild:
 	scripts/rebuild_chroma_native.sh
