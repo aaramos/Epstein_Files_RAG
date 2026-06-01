@@ -20,10 +20,12 @@ if str(SCRIPTS_DIR) not in sys.path:
 from index_state import read_index_status
 from index_lock import process_alive, read_lock, release_stale_lock
 from llm_factory import _get_omlx_api_key, get_omlx_base_url, get_omlx_model_name
+from faiss_progress import payload as faiss_progress_payload
 from progress import human_duration, progress_payload, stale_failure_reason
 
 
 DB_DIR = Path(os.getenv("DB_PATH", str(ROOT / "chroma_db")))
+FAISS_DIR = Path(os.getenv("FAISS_INDEX_DIR", str(ROOT / "faiss_index")))
 SAMPLE_LIMIT = 5
 
 
@@ -156,6 +158,22 @@ def check_disk_space() -> tuple[bool, str]:
     return ok, f"{free_gb:.1f} GB free of {total_gb:.1f} GB at {target}; minimum {min_free_gb:.1f} GB"
 
 
+def check_faiss_backend() -> tuple[bool, str]:
+    data = faiss_progress_payload(FAISS_DIR, ROOT / "chroma_db" / "ingest_manifest.json")
+    chunks = int(data.get("chunks") or 0)
+    expected = data.get("expected_chunks")
+    if data.get("complete") is not True:
+        if expected:
+            return False, f"FAISS incomplete: {chunks:,}/{expected:,} chunks ({chunks / expected:.1%})"
+        return False, f"FAISS incomplete: {chunks:,} chunks"
+    if expected and chunks != expected:
+        return False, f"FAISS complete marker present but chunk count is {chunks:,}/{expected:,}"
+    metadata_chunks = data.get("metadata_chunks")
+    if metadata_chunks is not None and int(metadata_chunks) != chunks:
+        return False, f"FAISS metadata rows {int(metadata_chunks):,} do not match manifest chunks {chunks:,}"
+    return True, f"FAISS complete with {chunks:,} chunks"
+
+
 def print_gate(ok: bool, label: str, detail: str) -> None:
     marker = "OK" if ok else "WAIT"
     print(f"[{marker}] {label}: {detail}")
@@ -194,6 +212,9 @@ def audit_payload(skip_app: bool = False, skip_rag: bool = False) -> dict:
 
     disk_ok, disk_detail = check_disk_space()
     add_gate(gates, "disk_space", "Disk space", disk_ok, disk_detail)
+
+    faiss_ok, faiss_detail = check_faiss_backend()
+    add_gate(gates, "faiss_backend", "FAISS backend", faiss_ok, faiss_detail)
 
     omlx_ok, omlx_detail = check_omlx()
     add_gate(gates, "omlx", "oMLX", omlx_ok, omlx_detail)

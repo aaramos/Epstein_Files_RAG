@@ -243,6 +243,28 @@ class FinalAuditTests(unittest.TestCase):
         self.assertFalse(ok)
         self.assertIn("minimum 20.0 GB", detail)
 
+    def test_check_faiss_backend_requires_complete_index(self):
+        with patch.object(
+            final_audit,
+            "faiss_progress_payload",
+            return_value={"chunks": 100, "expected_chunks": 200, "complete": False},
+        ):
+            ok, detail = final_audit.check_faiss_backend()
+
+        self.assertFalse(ok)
+        self.assertIn("100/200", detail)
+
+    def test_check_faiss_backend_accepts_complete_matching_index(self):
+        with patch.object(
+            final_audit,
+            "faiss_progress_payload",
+            return_value={"chunks": 200, "expected_chunks": 200, "metadata_chunks": 200, "complete": True},
+        ):
+            ok, detail = final_audit.check_faiss_backend()
+
+        self.assertTrue(ok)
+        self.assertIn("complete", detail)
+
     def test_audit_payload_reports_incomplete_index(self):
         status = IndexStatus(
             downloaded_files=2,
@@ -262,6 +284,8 @@ class FinalAuditTests(unittest.TestCase):
             final_audit, "check_index_progress", return_value=(True, "progress ok")
         ), patch.object(
             final_audit, "check_disk_space", return_value=(True, "disk ok")
+        ), patch.object(
+            final_audit, "check_faiss_backend", return_value=(True, "faiss ok")
         ), patch.object(
             final_audit, "check_docker_assets", return_value=(True, "docker ok")
         ), patch.object(
@@ -317,6 +341,8 @@ class FinalAuditTests(unittest.TestCase):
         ), patch.object(
             final_audit, "check_disk_space", return_value=(True, "disk ok")
         ), patch.object(
+            final_audit, "check_faiss_backend", return_value=(True, "faiss ok")
+        ), patch.object(
             final_audit, "check_docker_assets", return_value=(True, "docker ok")
         ), patch.object(
             final_audit, "run_launchd_validation", return_value=(True, "launchd ok")
@@ -350,6 +376,8 @@ class FinalAuditTests(unittest.TestCase):
         ), patch.object(
             final_audit, "check_disk_space", return_value=(True, "disk ok")
         ), patch.object(
+            final_audit, "check_faiss_backend", return_value=(True, "faiss ok")
+        ), patch.object(
             final_audit, "check_docker_assets", return_value=(True, "docker ok")
         ), patch.object(
             final_audit, "run_launchd_validation", return_value=(True, "launchd ok")
@@ -382,6 +410,8 @@ class FinalAuditTests(unittest.TestCase):
             final_audit, "check_index_progress", return_value=(True, "progress ok")
         ), patch.object(
             final_audit, "check_disk_space", return_value=(True, "disk ok")
+        ), patch.object(
+            final_audit, "check_faiss_backend", return_value=(True, "faiss ok")
         ), patch.object(
             final_audit, "check_docker_assets", return_value=(True, "docker ok")
         ), patch.object(
