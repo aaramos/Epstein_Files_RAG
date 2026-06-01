@@ -177,6 +177,7 @@ def full_index_detail(status) -> str:
 def audit_payload(skip_app: bool = False, skip_rag: bool = False) -> dict:
     clean_stale_index_lock()
     status = read_index_status(root=ROOT)
+    progress = progress_payload() if status.indexing_active else None
     gates: list[dict] = []
 
     data_ok = status.downloaded_files >= status.expected_files
@@ -220,7 +221,7 @@ def audit_payload(skip_app: bool = False, skip_rag: bool = False) -> dict:
     skipped_gates = [gate for gate in gates if gate["skipped"]]
     all_ok = all(gate["ok"] for gate in gates)
     complete = all_ok and not skipped_gates
-    return {
+    payload = {
         "complete": complete,
         "gates": gates,
         "skipped_gates": [gate["key"] for gate in skipped_gates],
@@ -237,6 +238,16 @@ def audit_payload(skip_app: bool = False, skip_rag: bool = False) -> dict:
             "unexpected_indexed_sample": list(status.unexpected_indexed_names[:SAMPLE_LIMIT]),
         },
     }
+    if progress:
+        payload["progress"] = {
+            "rate_files_per_minute": progress.get("rate_files_per_minute"),
+            "eta_seconds": progress.get("eta_seconds"),
+            "eta_at_utc": progress.get("eta_at_utc"),
+            "eta_at_local": progress.get("eta_at_local"),
+            "manifest_age_seconds": progress.get("manifest_age_seconds"),
+            "index_log_age_seconds": progress.get("index_log_age_seconds"),
+        }
+    return payload
 
 
 def print_human(payload: dict) -> None:

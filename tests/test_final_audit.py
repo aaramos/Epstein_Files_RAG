@@ -265,6 +265,17 @@ class FinalAuditTests(unittest.TestCase):
             final_audit, "check_docker_assets", return_value=(True, "docker ok")
         ), patch.object(
             final_audit, "run_launchd_validation", return_value=(True, "launchd ok")
+        ), patch.object(
+            final_audit,
+            "progress_payload",
+            return_value={
+                "rate_files_per_minute": 2.5,
+                "eta_seconds": 120,
+                "eta_at_utc": "2026-06-01T04:00:00+00:00",
+                "eta_at_local": "2026-05-31T21:00:00-07:00",
+                "manifest_age_seconds": 2,
+                "index_log_age_seconds": 3,
+            },
         ):
             payload = final_audit.audit_payload(skip_app=True)
 
@@ -274,6 +285,8 @@ class FinalAuditTests(unittest.TestCase):
         self.assertEqual(payload["index"]["missing_indexed_files"], 1)
         self.assertEqual(payload["index"]["missing_indexed_sample"], ["epstein_files-0001.parquet"])
         self.assertEqual(payload["index"]["unexpected_indexed_sample"], [])
+        self.assertEqual(payload["progress"]["rate_files_per_minute"], 2.5)
+        self.assertEqual(payload["progress"]["eta_at_local"], "2026-05-31T21:00:00-07:00")
         full_index_gate = next(gate for gate in payload["gates"] if gate["key"] == "full_index")
         self.assertFalse(full_index_gate["ok"])
         self.assertTrue(payload["gates"][-1]["skipped"])

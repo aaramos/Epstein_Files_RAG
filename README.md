@@ -172,7 +172,10 @@ template validity, Streamlit launch readiness, and final RAG validation. While i
 to see the current gate state without launching Streamlit or failing the
 command. Use `scripts/final_audit.sh --json` for
 machine-readable gate output. Skipped gates are reported in `skipped_gates` and
-never count as proof that the Mac conversion is complete.
+never count as proof that the Mac conversion is complete. While indexing is
+active, the JSON audit payload also includes progress rate and estimated
+completion timestamps so diagnostics bundles can explain both readiness and
+remaining time.
 
 For unattended completion, run `make wait`. It prints progress on an interval
 and automatically runs the full final audit when the manifest shows all files
