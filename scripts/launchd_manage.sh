@@ -14,7 +14,7 @@ services=(
 )
 
 usage() {
-  echo "Usage: scripts/launchd_manage.sh {install|uninstall|status|start|stop} [app|indexer|all]" >&2
+  echo "Usage: scripts/launchd_manage.sh {install|uninstall|status|start|stop|validate} [app|indexer|all]" >&2
 }
 
 selected_services() {
@@ -31,17 +31,31 @@ plist_path() {
   echo "${LAUNCHD_DIR}/${1}.plist"
 }
 
-render_plist() {
+render_plist_to() {
   local label="$1"
+  local destination="$2"
   local source="launchd/${label}.plist.example"
-  local destination
-  destination="$(plist_path "$label")"
 
-  mkdir -p "$LAUNCHD_DIR" runtime
+  mkdir -p "$(dirname "$destination")" runtime
   sed "s#/Users/macstudio/Documents/RAG/Epstein_Files_RAG_macstudio#${ROOT_DIR}#g" \
     "$source" > "$destination"
   plutil -lint "$destination" >/dev/null
+}
+
+render_plist() {
+  local label="$1"
+  local destination
+  destination="$(plist_path "$label")"
+  render_plist_to "$label" "$destination"
   echo "Installed ${destination}"
+}
+
+validate_service() {
+  local label="$1"
+  local temp_dir="$2"
+  local destination="${temp_dir}/${label}.plist"
+  render_plist_to "$label" "$destination"
+  echo "Validated ${label}"
 }
 
 bootstrap_service() {
@@ -106,6 +120,13 @@ case "$ACTION" in
   stop)
     for service in $(selected_services "$TARGET"); do
       stop_service "$service"
+    done
+    ;;
+  validate)
+    temp_dir="$(mktemp -d)"
+    trap 'rm -rf "$temp_dir"' EXIT
+    for service in $(selected_services "$TARGET"); do
+      validate_service "$service" "$temp_dir"
     done
     ;;
   *)

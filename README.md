@@ -158,11 +158,13 @@ You can also install the app and indexer LaunchAgents from the current checkout:
 ```bash
 make launchd-install
 make launchd-status
+make launchd-validate
 ```
 
 Use `scripts/launchd_manage.sh install app` or `install indexer` to install
-only one service. The helper renders the plist files with the current checkout
-path and writes logs under `runtime/`.
+only one service. Use `scripts/launchd_manage.sh validate` to render and lint
+the LaunchAgents without installing them. The helper renders the plist files
+with the current checkout path and writes logs under `runtime/`.
 
 ### General Prerequisites
 - **Python 3.10+** (Recommend using a virtual environment).
