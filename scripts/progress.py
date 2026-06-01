@@ -15,9 +15,6 @@ if str(ROOT) not in sys.path:
 
 from index_state import default_manifest_path, load_manifest, read_index_status
 
-LOG_PATH = Path(os.getenv("INDEX_LOG_PATH", str(ROOT / "runtime" / "index_full.log")))
-STALE_SECONDS = int(os.getenv("INDEX_STALE_SECONDS", "600"))
-
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Report local download and Chroma index progress.")
@@ -54,6 +51,14 @@ def file_age_seconds(path: Path, now: datetime) -> float | None:
         return None
 
 
+def index_log_path(root: Path = ROOT) -> Path:
+    return Path(os.getenv("INDEX_LOG_PATH", str(root / "runtime" / "index_full.log")))
+
+
+def stale_seconds() -> int:
+    return int(os.getenv("INDEX_STALE_SECONDS", "600"))
+
+
 def progress_payload() -> dict:
     manifest = load_manifest(default_manifest_path(ROOT))
     status = read_index_status(root=ROOT)
@@ -79,8 +84,9 @@ def progress_payload() -> dict:
     remaining = max(0, status.expected_files - status.indexed_files)
     eta = remaining / rate if rate else None
     manifest_age = file_age_seconds(default_manifest_path(ROOT), now)
-    log_age = file_age_seconds(LOG_PATH, now)
-    stale = bool(status.indexing_active and log_age is not None and log_age > STALE_SECONDS)
+    stale_after = stale_seconds()
+    log_age = file_age_seconds(index_log_path(ROOT), now)
+    stale = bool(status.indexing_active and log_age is not None and log_age > stale_after)
 
     return {
         "downloaded_files": status.downloaded_files,
@@ -98,7 +104,7 @@ def progress_payload() -> dict:
         "eta_seconds": eta,
         "manifest_age_seconds": manifest_age,
         "index_log_age_seconds": log_age,
-        "stale_seconds": STALE_SECONDS,
+        "stale_seconds": stale_after,
         "stale": stale,
     }
 
@@ -119,7 +125,7 @@ def print_human(payload: dict) -> None:
     print(f"Manifest updated: {human_duration(manifest_age)} ago" if manifest_age is not None else "Manifest updated: unknown")
     print(f"Index log updated: {human_duration(log_age)} ago" if log_age is not None else "Index log updated: unknown")
     if payload["stale"]:
-        print(f"Warning: index log has been quiet for more than {human_duration(STALE_SECONDS)}")
+        print(f"Warning: index log has been quiet for more than {human_duration(payload['stale_seconds'])}")
 
 
 def main() -> None:
