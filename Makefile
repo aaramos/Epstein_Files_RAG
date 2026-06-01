@@ -1,6 +1,6 @@
 PYTHON ?= .venv/bin/python
 
-.PHONY: setup doctor status progress watch wait wait-notify validate validate-rag final-validate final-audit partial-audit smoke-app diagnostics benchmark test check run index download docker-up launchd-install launchd-uninstall launchd-status launchd-validate
+.PHONY: setup doctor status progress watch wait wait-notify validate validate-rag final-validate final-audit partial-audit partial-audit-json smoke-app diagnostics benchmark test check run index download docker-up launchd-install launchd-uninstall launchd-status launchd-validate
 
 setup:
 	scripts/setup_macos.sh
@@ -37,6 +37,9 @@ final-audit:
 
 partial-audit:
 	scripts/final_audit.sh --allow-incomplete --skip-app
+
+partial-audit-json:
+	scripts/final_audit.sh --allow-incomplete --skip-app --json
 
 smoke-app:
 	scripts/smoke_app.sh

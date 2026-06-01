@@ -85,6 +85,8 @@ class ShellScriptTests(unittest.TestCase):
 
         self.assertIn("partial-audit:", makefile)
         self.assertIn("scripts/final_audit.sh --allow-incomplete --skip-app", makefile)
+        self.assertIn("partial-audit-json:", makefile)
+        self.assertIn("scripts/final_audit.sh --allow-incomplete --skip-app --json", makefile)
 
 
 if __name__ == "__main__":
