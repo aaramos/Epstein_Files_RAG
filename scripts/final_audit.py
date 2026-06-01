@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import subprocess
 import sys
 import urllib.request
@@ -9,10 +10,14 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
+SCRIPTS_DIR = Path(__file__).resolve().parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
+if str(SCRIPTS_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPTS_DIR))
 
 from index_state import read_index_status
+from index_lock import process_alive, read_lock
 from llm_factory import _get_omlx_api_key, get_omlx_base_url, get_omlx_model_name
 
 
@@ -63,6 +68,26 @@ def run_app_smoke() -> tuple[bool, str]:
     return result.returncode == 0, output or "app smoke produced no output"
 
 
+def index_lock_path() -> Path:
+    return Path(os.getenv("INDEX_LOCK_PATH", str(ROOT / "runtime" / "index_full.lock")))
+
+
+def check_index_lock(indexing_active: bool) -> tuple[bool, str]:
+    path = index_lock_path()
+    lock = read_lock(path)
+    if not isinstance(lock, dict):
+        if indexing_active:
+            return False, f"indexing is active but no lock exists at {path}"
+        return True, "no active index lock"
+
+    pid = lock.get("pid")
+    if not isinstance(pid, int):
+        return False, f"index lock at {path} does not contain a valid PID"
+    if process_alive(pid):
+        return True, f"lock owned by live PID {pid}"
+    return False, f"stale index lock at {path} for PID {pid}"
+
+
 def print_gate(ok: bool, label: str, detail: str) -> None:
     marker = "OK" if ok else "WAIT"
     print(f"[{marker}] {label}: {detail}")
@@ -81,6 +106,9 @@ def audit_payload(skip_app: bool = False, skip_rag: bool = False) -> dict:
 
     index_ok = status.complete
     add_gate(gates, "full_index", "Full index", index_ok, f"{status.indexed_files}/{status.expected_files} files, {status.in_progress_files} in progress, {status.indexed_chunks:,} chunks")
+
+    lock_ok, lock_detail = check_index_lock(status.indexing_active)
+    add_gate(gates, "index_lock", "Index lock", lock_ok, lock_detail)
 
     omlx_ok, omlx_detail = check_omlx()
     add_gate(gates, "omlx", "oMLX", omlx_ok, omlx_detail)

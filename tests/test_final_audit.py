@@ -1,5 +1,7 @@
 import importlib.util
+import os
 import subprocess
+import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import Mock, patch
@@ -89,6 +91,42 @@ class FinalAuditTests(unittest.TestCase):
         self.assertFalse(ok)
         self.assertEqual(detail, "app failed")
 
+    def test_check_index_lock_accepts_live_lock(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            lock_path = Path(tmpdir) / "index.lock"
+            lock_path.write_text(f'{{"pid": {os.getpid()}, "command": "index"}}')
+            with patch.object(final_audit, "index_lock_path", return_value=lock_path):
+                ok, detail = final_audit.check_index_lock(indexing_active=True)
+
+        self.assertTrue(ok)
+        self.assertIn(str(os.getpid()), detail)
+
+    def test_check_index_lock_rejects_missing_lock_during_active_indexing(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with patch.object(final_audit, "index_lock_path", return_value=Path(tmpdir) / "missing.lock"):
+                ok, detail = final_audit.check_index_lock(indexing_active=True)
+
+        self.assertFalse(ok)
+        self.assertIn("no lock", detail)
+
+    def test_check_index_lock_rejects_stale_lock(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            lock_path = Path(tmpdir) / "index.lock"
+            lock_path.write_text('{"pid": 999999999, "command": "old"}')
+            with patch.object(final_audit, "index_lock_path", return_value=lock_path):
+                ok, detail = final_audit.check_index_lock(indexing_active=False)
+
+        self.assertFalse(ok)
+        self.assertIn("stale", detail)
+
+    def test_check_index_lock_accepts_no_lock_when_idle(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with patch.object(final_audit, "index_lock_path", return_value=Path(tmpdir) / "missing.lock"):
+                ok, detail = final_audit.check_index_lock(indexing_active=False)
+
+        self.assertTrue(ok)
+        self.assertIn("no active", detail)
+
     def test_audit_payload_reports_incomplete_index(self):
         status = IndexStatus(
             downloaded_files=2,
@@ -101,13 +139,13 @@ class FinalAuditTests(unittest.TestCase):
         )
         with patch.object(final_audit, "read_index_status", return_value=status), patch.object(
             final_audit, "check_omlx", return_value=(True, "ok")
-        ):
+        ), patch.object(final_audit, "check_index_lock", return_value=(True, "lock ok")):
             payload = final_audit.audit_payload(skip_app=True)
 
         self.assertFalse(payload["complete"])
         self.assertEqual(payload["index"]["indexed_files"], 1)
-        self.assertEqual(payload["gates"][1]["key"], "full_index")
-        self.assertFalse(payload["gates"][1]["ok"])
+        full_index_gate = next(gate for gate in payload["gates"] if gate["key"] == "full_index")
+        self.assertFalse(full_index_gate["ok"])
         self.assertTrue(payload["gates"][-1]["skipped"])
 
     def test_audit_payload_runs_validation_after_complete_index(self):
@@ -122,7 +160,9 @@ class FinalAuditTests(unittest.TestCase):
         )
         with patch.object(final_audit, "read_index_status", return_value=status), patch.object(
             final_audit, "check_omlx", return_value=(True, "ok")
-        ), patch.object(final_audit, "run_app_smoke", return_value=(True, "app ok")), patch.object(
+        ), patch.object(final_audit, "check_index_lock", return_value=(True, "lock ok")), patch.object(
+            final_audit, "run_app_smoke", return_value=(True, "app ok")
+        ), patch.object(
             final_audit, "run_final_validation", return_value=(True, "Validation OK")
         ) as validate:
             payload = final_audit.audit_payload(skip_app=False, skip_rag=True)
@@ -143,7 +183,9 @@ class FinalAuditTests(unittest.TestCase):
         )
         with patch.object(final_audit, "read_index_status", return_value=status), patch.object(
             final_audit, "check_omlx", return_value=(True, "ok")
-        ), patch.object(final_audit, "run_app_smoke", return_value=(True, "app ok")), patch.object(
+        ), patch.object(final_audit, "check_index_lock", return_value=(True, "lock ok")), patch.object(
+            final_audit, "run_app_smoke", return_value=(True, "app ok")
+        ), patch.object(
             final_audit, "run_final_validation", return_value=(True, "Validation OK")
         ) as validate:
             payload = final_audit.audit_payload(skip_app=False, skip_rag=False)
@@ -164,7 +206,9 @@ class FinalAuditTests(unittest.TestCase):
         )
         with patch.object(final_audit, "read_index_status", return_value=status), patch.object(
             final_audit, "check_omlx", return_value=(True, "ok")
-        ), patch.object(final_audit, "run_final_validation", return_value=(True, "Validation OK")):
+        ), patch.object(final_audit, "check_index_lock", return_value=(True, "lock ok")), patch.object(
+            final_audit, "run_final_validation", return_value=(True, "Validation OK")
+        ):
             payload = final_audit.audit_payload(skip_app=True, skip_rag=False)
 
         self.assertFalse(payload["complete"])
