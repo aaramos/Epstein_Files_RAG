@@ -67,12 +67,16 @@ make wait
 `scripts/progress.sh` also reports manifest and index-log freshness. If an
 active indexer has not written to `runtime/index_full.log` for more than
 `INDEX_STALE_SECONDS` seconds, it prints a warning. Use
-`scripts/progress.sh --json` for machine-readable monitor output. The progress
-report also lists live `ingest.py` process IDs and warns if the manifest says
-indexing is active but no indexer process is running. When process scanning is
-unavailable, it still reports `runtime/index_full.lock` ownership and whether
-the lock PID is alive. `make wait` treats stale progress signals as failures so
-unattended runs do not loop forever after a stalled or orphaned indexer.
+`scripts/progress.sh --json` for machine-readable monitor output. The JSON
+payload includes small filename samples for downloaded files still missing from
+the manifest and manifest entries whose parquet files are absent, so handoff
+bundles can explain index/data mismatches without opening the manifest by hand.
+The progress report also lists live `ingest.py` process IDs and warns if the
+manifest says indexing is active but no indexer process is running. When process
+scanning is unavailable, it still reports `runtime/index_full.lock` ownership
+and whether the lock PID is alive. `make wait` treats stale progress signals as
+failures so unattended runs do not loop forever after a stalled or orphaned
+indexer.
 
 To run a Mac readiness check:
 
@@ -128,6 +132,8 @@ Useful ingestion tuning knobs:
 - `--embedding-device mps`: request Apple Silicon acceleration for native runs.
   If PyTorch cannot initialize MPS on the current macOS/runtime, the app falls
   back to CPU automatically.
+- `INDEX_LOG_PATH`, `INDEX_LOCK_PATH`, and `INDEX_STALE_SECONDS`: progress and
+  unattended wait guardrails for the native full-index run.
 
 Useful local generation knobs:
 
