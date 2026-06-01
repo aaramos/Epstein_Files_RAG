@@ -79,6 +79,34 @@ def run_launchd_validation() -> tuple[bool, str]:
     return result.returncode == 0, output or "LaunchAgent validation produced no output"
 
 
+def check_docker_assets() -> tuple[bool, str]:
+    dockerfile = ROOT / "Dockerfile"
+    compose = ROOT / "docker-compose.yml"
+    dockerignore = ROOT / ".dockerignore"
+    missing = [path.name for path in (dockerfile, compose, dockerignore) if not path.exists()]
+    if missing:
+        return False, "missing " + ", ".join(missing)
+
+    dockerfile_text = dockerfile.read_text()
+    compose_text = compose.read_text()
+    dockerignore_lines = set(dockerignore.read_text().splitlines())
+    checks = {
+        "Dockerfile exposes Streamlit": "EXPOSE 8501" in dockerfile_text,
+        "Dockerfile has healthcheck": "HEALTHCHECK" in dockerfile_text,
+        "Dockerfile runs Streamlit on 0.0.0.0": "--server.address" in dockerfile_text and "0.0.0.0" in dockerfile_text,
+        "Compose routes oMLX to host": "host.docker.internal:1234/v1" in compose_text,
+        "Compose mounts data": "./data:/app/data" in compose_text,
+        "Compose mounts Chroma": "./chroma_db:/app/chroma_db" in compose_text,
+        "Compose includes healthcheck": "healthcheck:" in compose_text,
+        "Dockerignore excludes data": "data" in dockerignore_lines,
+        "Dockerignore excludes Chroma": "chroma_db" in dockerignore_lines,
+    }
+    failed = [label for label, ok in checks.items() if not ok]
+    if failed:
+        return False, "; ".join(failed)
+    return True, "Dockerfile, compose, healthcheck, oMLX host routing, and large-data ignores are present"
+
+
 def index_lock_path() -> Path:
     return Path(os.getenv("INDEX_LOCK_PATH", str(ROOT / "runtime" / "index_full.lock")))
 
@@ -150,6 +178,9 @@ def audit_payload(skip_app: bool = False, skip_rag: bool = False) -> dict:
 
     omlx_ok, omlx_detail = check_omlx()
     add_gate(gates, "omlx", "oMLX", omlx_ok, omlx_detail)
+
+    docker_ok, docker_detail = check_docker_assets()
+    add_gate(gates, "docker_assets", "Docker assets", docker_ok, docker_detail)
 
     launchd_ok, launchd_detail = run_launchd_validation()
     add_gate(gates, "launchd_templates", "LaunchAgent templates", launchd_ok, launchd_detail)

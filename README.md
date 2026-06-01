@@ -151,8 +151,8 @@ short oMLX generation check.
 
 For a one-command completion gate, run `make final-audit`. It checks dataset
 presence, full-index completion, native index-lock health, disk headroom, oMLX
-reachability, LaunchAgent template validity, Streamlit launch readiness, and
-final RAG validation. While indexing is still running, use
+reachability, Docker asset integrity, LaunchAgent template validity, Streamlit
+launch readiness, and final RAG validation. While indexing is still running, use
 `scripts/final_audit.sh --allow-incomplete` to see the current gate state
 without failing the command. Use `scripts/final_audit.sh --json` for
 machine-readable gate output. Skipped gates are reported in `skipped_gates` and
@@ -187,6 +187,9 @@ Linux container runtime. To force a constraint file for a custom build, pass
 
 The image and Compose service include a Streamlit HTTP health check on port
 `8501`, so container runtimes can report when the app is actually serving.
+`make final-audit` statically verifies the Dockerfile, Compose healthcheck,
+host oMLX routing, mounted data/index paths, and `.dockerignore` exclusions even
+on Macs where Docker is not installed.
 
 ### macOS LaunchAgent Templates
 Example LaunchAgent plists live in `launchd/`:
