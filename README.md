@@ -76,14 +76,15 @@ scripts/benchmark.sh
 ```
 
 To collect a timestamped handoff bundle with progress, audit gates, LaunchAgent
-status/validation, git state, and index log tails:
+status/validation, git state, a manifest, and index log tails:
 
 ```bash
 make diagnostics
 ```
 
 By default, diagnostics are written under `runtime/diagnostics/<timestamp>` and
-`runtime/diagnostics/latest` points to the newest bundle.
+`runtime/diagnostics/latest` points to the newest bundle. Each bundle includes
+`manifest.json` with the source commit and file list.
 
 The same commands are exposed as Make targets: `make status`, `make progress`,
 `make wait`, `make validate`, `make validate-rag`, `make final-validate`,

@@ -37,6 +37,36 @@ fi
 git status --short >"${OUT_DIR}/git_status.txt"
 git log --oneline -20 >"${OUT_DIR}/git_log.txt"
 
+.venv/bin/python - <<'PY' "$OUT_DIR" "$STAMP" >"${OUT_DIR}/manifest.json"
+import json
+import subprocess
+import sys
+from pathlib import Path
+
+out_dir = Path(sys.argv[1])
+stamp = sys.argv[2]
+
+def git_value(*args):
+    try:
+        return subprocess.check_output(["git", *args], text=True).strip()
+    except Exception:
+        return None
+
+files = sorted(path.name for path in out_dir.iterdir() if path.is_file() and path.name != "manifest.json")
+payload = {
+    "generated_at_utc": stamp,
+    "git_commit": git_value("rev-parse", "HEAD"),
+    "git_branch": git_value("branch", "--show-current"),
+    "files": files,
+    "notes": [
+        "progress_json.txt contains machine-readable index progress",
+        "final_audit.txt contains current completion gate state",
+        "index_full.tail.log contains the latest indexer log lines when available",
+    ],
+}
+print(json.dumps(payload, indent=2, sort_keys=True))
+PY
+
 if [[ -z "${DIAGNOSTICS_DIR:-}" ]]; then
   ln -sfn "$(basename "$OUT_DIR")" "$LATEST_LINK"
 fi
