@@ -73,6 +73,12 @@ def run_app_smoke() -> tuple[bool, str]:
     return result.returncode == 0, output or "app smoke produced no output"
 
 
+def run_launchd_validation() -> tuple[bool, str]:
+    result = subprocess.run(["scripts/launchd_manage.sh", "validate"], cwd=ROOT, text=True, capture_output=True)
+    output = "\n".join(part for part in (result.stdout.strip(), result.stderr.strip()) if part)
+    return result.returncode == 0, output or "LaunchAgent validation produced no output"
+
+
 def index_lock_path() -> Path:
     return Path(os.getenv("INDEX_LOCK_PATH", str(ROOT / "runtime" / "index_full.lock")))
 
@@ -144,6 +150,9 @@ def audit_payload(skip_app: bool = False, skip_rag: bool = False) -> dict:
 
     omlx_ok, omlx_detail = check_omlx()
     add_gate(gates, "omlx", "oMLX", omlx_ok, omlx_detail)
+
+    launchd_ok, launchd_detail = run_launchd_validation()
+    add_gate(gates, "launchd_templates", "LaunchAgent templates", launchd_ok, launchd_detail)
 
     if skip_app:
         add_gate(gates, "streamlit_app", "Streamlit app", True, "skipped", skipped=True)

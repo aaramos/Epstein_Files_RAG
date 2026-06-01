@@ -91,6 +91,15 @@ class FinalAuditTests(unittest.TestCase):
         self.assertFalse(ok)
         self.assertEqual(detail, "app failed")
 
+    def test_run_launchd_validation_returns_output(self):
+        completed = subprocess.CompletedProcess(args=[], returncode=0, stdout="Validated app\n", stderr="")
+        with patch.object(final_audit.subprocess, "run", return_value=completed) as run:
+            ok, detail = final_audit.run_launchd_validation()
+
+        self.assertTrue(ok)
+        self.assertEqual(detail, "Validated app")
+        self.assertEqual(run.call_args.args[0], ["scripts/launchd_manage.sh", "validate"])
+
     def test_check_index_lock_accepts_live_lock(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             lock_path = Path(tmpdir) / "index.lock"
@@ -174,6 +183,8 @@ class FinalAuditTests(unittest.TestCase):
             final_audit, "check_index_lock", return_value=(True, "lock ok")
         ), patch.object(
             final_audit, "check_disk_space", return_value=(True, "disk ok")
+        ), patch.object(
+            final_audit, "run_launchd_validation", return_value=(True, "launchd ok")
         ):
             payload = final_audit.audit_payload(skip_app=True)
 
@@ -203,6 +214,8 @@ class FinalAuditTests(unittest.TestCase):
         ), patch.object(
             final_audit, "check_disk_space", return_value=(True, "disk ok")
         ), patch.object(
+            final_audit, "run_launchd_validation", return_value=(True, "launchd ok")
+        ), patch.object(
             final_audit, "run_app_smoke", return_value=(True, "app ok")
         ), patch.object(
             final_audit, "run_final_validation", return_value=(True, "Validation OK")
@@ -230,6 +243,8 @@ class FinalAuditTests(unittest.TestCase):
         ), patch.object(
             final_audit, "check_disk_space", return_value=(True, "disk ok")
         ), patch.object(
+            final_audit, "run_launchd_validation", return_value=(True, "launchd ok")
+        ), patch.object(
             final_audit, "run_app_smoke", return_value=(True, "app ok")
         ), patch.object(
             final_audit, "run_final_validation", return_value=(True, "Validation OK")
@@ -256,6 +271,8 @@ class FinalAuditTests(unittest.TestCase):
             final_audit, "check_index_lock", return_value=(True, "lock ok")
         ), patch.object(
             final_audit, "check_disk_space", return_value=(True, "disk ok")
+        ), patch.object(
+            final_audit, "run_launchd_validation", return_value=(True, "launchd ok")
         ), patch.object(
             final_audit, "run_final_validation", return_value=(True, "Validation OK")
         ):

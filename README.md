@@ -151,7 +151,8 @@ short oMLX generation check.
 
 For a one-command completion gate, run `make final-audit`. It checks dataset
 presence, full-index completion, native index-lock health, disk headroom, oMLX
-reachability, Streamlit launch readiness, and final RAG validation. While indexing is still running, use
+reachability, LaunchAgent template validity, Streamlit launch readiness, and
+final RAG validation. While indexing is still running, use
 `scripts/final_audit.sh --allow-incomplete` to see the current gate state
 without failing the command. Use `scripts/final_audit.sh --json` for
 machine-readable gate output. Skipped gates are reported in `skipped_gates` and
