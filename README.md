@@ -72,14 +72,15 @@ active indexer has not written to `runtime/index_full.log` for more than
 `INDEX_STALE_SECONDS` seconds, it prints a warning. Use
 `scripts/progress.sh --json` for machine-readable monitor output. The JSON
 payload includes the resolved dataset path and size, current Chroma index path
-and size, UTC and local estimated completion timestamps, plus small filename
-samples for downloaded files still missing from the manifest and manifest
-entries whose parquet files are absent. This keeps handoff bundles clear when
-`data/` is a symlink to a large shared corpus and avoids mistaking the symlink
-entry itself for the actual dataset size. The progress report also lists live
-`ingest.py` process IDs and warns if the manifest says indexing is active but no
-indexer process is running. When process scanning is unavailable, it still
-reports `runtime/index_full.lock` ownership and whether the lock PID is alive.
+and size, free space on the index volume, projected final Chroma index size, UTC
+and local estimated completion timestamps, plus small filename samples for
+downloaded files still missing from the manifest and manifest entries whose
+parquet files are absent. This keeps handoff bundles clear when `data/` is a
+symlink to a large shared corpus and avoids mistaking the symlink entry itself
+for the actual dataset size. The progress report also lists live `ingest.py`
+process IDs and warns if the manifest says indexing is active but no indexer
+process is running. When process scanning is unavailable, it still reports
+`runtime/index_full.lock` ownership and whether the lock PID is alive.
 `make wait` treats stale progress signals as failures so unattended runs do not
 loop forever after a stalled or orphaned indexer.
 
@@ -119,7 +120,8 @@ Chroma read/write pressure; after the full index is complete, diagnostics record
 the full final audit including app smoke and RAG validation, plus retrieval
 benchmark output. The diagnostics manifest includes `final_audit_mode` so
 handoffs can tell which path was used, plus a summary of index progress, source
-dataset size, Chroma index size, ETA, and skipped gates.
+dataset size, current and projected Chroma index size, free disk space, ETA, and
+skipped gates.
 
 The same commands are exposed as Make targets: `make status`, `make progress`,
 `make watch`, `make partial-audit`, `make partial-audit-json`, `make wait`,
