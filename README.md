@@ -75,6 +75,13 @@ scripts/validate_rag.sh --rag
 scripts/benchmark.sh
 ```
 
+To collect a timestamped handoff bundle with progress, audit gates, LaunchAgent
+status/validation, git state, and index log tails:
+
+```bash
+make diagnostics
+```
+
 The same commands are exposed as Make targets: `make status`, `make progress`,
 `make wait`, `make validate`, `make validate-rag`, `make final-validate`,
 `make benchmark`, `make test`, and `make check`.
