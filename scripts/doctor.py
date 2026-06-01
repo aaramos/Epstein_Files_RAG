@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import socket
 import sys
 import urllib.error
@@ -101,6 +102,20 @@ def check_data_index() -> None:
     status("Chroma index", bool(index_status.indexed_files), f"{index_status.indexed_files}/{index_status.expected_files} files, {index_status.in_progress_files} in progress, {index_status.indexed_chunks:,} chunks")
 
 
+def disk_space_status(path: Path, min_free_gb: float) -> tuple[bool, str]:
+    target = path if path.exists() else path.parent
+    usage = shutil.disk_usage(target)
+    free_gb = usage.free / (1024 ** 3)
+    total_gb = usage.total / (1024 ** 3)
+    return free_gb >= min_free_gb, f"{free_gb:.1f} GB free of {total_gb:.1f} GB at {target}"
+
+
+def check_disk_space() -> None:
+    min_free_gb = float(os.getenv("MIN_FREE_DISK_GB", "20"))
+    ok, detail = disk_space_status(DB_DIR, min_free_gb)
+    status("Disk space", ok, f"{detail}; minimum {min_free_gb:.1f} GB")
+
+
 def check_retrieval() -> None:
     index_status = read_index_status(data_dir=DATA_DIR, manifest_path=MANIFEST_PATH, root=ROOT)
     if not index_status.complete:
@@ -134,6 +149,7 @@ if __name__ == "__main__":
     check_mps()
     check_omlx()
     check_data_index()
+    check_disk_space()
     check_retrieval()
     check_ports()
     check_container_runtime()

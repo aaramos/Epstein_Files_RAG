@@ -85,6 +85,10 @@ scripts/validate_rag.sh --rag
 scripts/benchmark.sh
 ```
 
+`scripts/doctor.sh` also checks free disk space on the Chroma volume. The
+default minimum is `20` GB; override it with `MIN_FREE_DISK_GB` if your target
+volume needs a different threshold.
+
 To collect a timestamped handoff bundle with progress, audit gates, JSON audit
 state, LaunchAgent status/validation, git state, a manifest, and index log tails:
 
