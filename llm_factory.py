@@ -30,6 +30,14 @@ def _get_omlx_api_key():
     return None
 
 
+def get_omlx_base_url():
+    return os.getenv("MORNING_DISPATCH_MODEL_BASE_URL") or os.getenv("OMLX_BASE_URL", "http://127.0.0.1:1234/v1")
+
+
+def get_omlx_model_name(model_name=None):
+    return model_name or os.getenv("OMLX_MODEL") or os.getenv("MORNING_DISPATCH_LIBRARIAN_MODEL", "Gemma4-MTP-26B-BF16")
+
+
 def _int_from_env(name, default):
     raw_value = os.getenv(name)
     if not raw_value:
@@ -60,8 +68,8 @@ def get_llm(provider=None, model_name=None):
         api_key = _get_omlx_api_key()
         if not api_key:
             raise ValueError("oMLX API key not found. Set MORNING_DISPATCH_MODEL_API_KEY, OMLX_API_KEY, LM_API_KEY, or OMLX_SETTINGS_PATH.")
-        base_url = os.getenv("MORNING_DISPATCH_MODEL_BASE_URL") or os.getenv("OMLX_BASE_URL", "http://127.0.0.1:1234/v1")
-        model = model_name or os.getenv("OMLX_MODEL") or os.getenv("MORNING_DISPATCH_LIBRARIAN_MODEL", "Gemma4-MTP-26B-BF16")
+        base_url = get_omlx_base_url()
+        model = get_omlx_model_name(model_name)
         return ChatOpenAI(
             openai_api_key=api_key,
             openai_api_base=base_url,

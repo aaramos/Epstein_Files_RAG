@@ -2,7 +2,7 @@ import importlib.util
 import subprocess
 import unittest
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 from index_state import IndexStatus
 
@@ -20,6 +20,39 @@ class FinalAuditTests(unittest.TestCase):
 
         self.assertFalse(ok)
         self.assertIn("key not found", detail)
+
+    def test_check_omlx_requires_selected_model(self):
+        response = Mock()
+        response.read.return_value = b'{"data": [{"id": "other-model"}]}'
+        context = Mock()
+        context.__enter__ = Mock(return_value=response)
+        context.__exit__ = Mock(return_value=None)
+        with patch.object(final_audit, "_get_omlx_api_key", return_value="key"), patch.object(
+            final_audit, "get_omlx_model_name", return_value="Gemma4-MTP-26B-BF16"
+        ), patch.object(final_audit, "get_omlx_base_url", return_value="http://127.0.0.1:1234/v1"), patch.object(
+            final_audit.urllib.request, "urlopen", return_value=context
+        ):
+            ok, detail = final_audit.check_omlx()
+
+        self.assertFalse(ok)
+        self.assertIn("Gemma4-MTP-26B-BF16", detail)
+        self.assertIn("other-model", detail)
+
+    def test_check_omlx_accepts_selected_model(self):
+        response = Mock()
+        response.read.return_value = b'{"data": [{"id": "Gemma4-MTP-26B-BF16"}]}'
+        context = Mock()
+        context.__enter__ = Mock(return_value=response)
+        context.__exit__ = Mock(return_value=None)
+        with patch.object(final_audit, "_get_omlx_api_key", return_value="key"), patch.object(
+            final_audit, "get_omlx_model_name", return_value="Gemma4-MTP-26B-BF16"
+        ), patch.object(final_audit, "get_omlx_base_url", return_value="http://127.0.0.1:1234/v1"), patch.object(
+            final_audit.urllib.request, "urlopen", return_value=context
+        ):
+            ok, detail = final_audit.check_omlx()
+
+        self.assertTrue(ok)
+        self.assertIn("available", detail)
 
     def test_run_final_validation_builds_rag_command(self):
         completed = subprocess.CompletedProcess(

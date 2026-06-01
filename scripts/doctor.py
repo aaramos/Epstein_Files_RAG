@@ -15,9 +15,9 @@ if str(ROOT) not in sys.path:
 DATA_DIR = Path(os.getenv("DATA_PATH", str(ROOT / "data")))
 DB_DIR = Path(os.getenv("DB_PATH", str(ROOT / "chroma_db")))
 MANIFEST_PATH = Path(os.getenv("INGEST_MANIFEST_PATH", str(DB_DIR / "ingest_manifest.json")))
-OMLX_BASE_URL = os.getenv("MORNING_DISPATCH_MODEL_BASE_URL") or os.getenv("OMLX_BASE_URL", "http://127.0.0.1:1234/v1")
 
 from index_state import load_manifest, read_index_status
+from llm_factory import get_omlx_base_url, get_omlx_model_name
 
 
 def status(label: str, ok: bool, detail: str) -> None:
@@ -72,17 +72,25 @@ def check_omlx() -> None:
     if not key:
         status("oMLX key", False, "not found in env or ~/.omlx/settings.json")
         return
+    base_url = get_omlx_base_url()
+    selected_model = get_omlx_model_name()
     request = urllib.request.Request(
-        OMLX_BASE_URL.rstrip("/") + "/models",
+        base_url.rstrip("/") + "/models",
         headers={"Authorization": f"Bearer {key}"},
     )
     try:
         with urllib.request.urlopen(request, timeout=5) as response:
             payload = json.loads(response.read().decode("utf-8"))
-        count = len(payload.get("data", []))
-        status("oMLX API", True, f"{count} models at {OMLX_BASE_URL}")
+        models = payload.get("data", [])
+        count = len(models)
+        model_ids = {model.get("id") for model in models if isinstance(model, dict)}
+        if selected_model in model_ids:
+            status("oMLX API", True, f"{selected_model} available at {base_url} ({count} models)")
+        else:
+            available = ", ".join(sorted(model_id for model_id in model_ids if model_id)) or "none"
+            status("oMLX API", False, f"configured model {selected_model} not found at {base_url}; available: {available}")
     except urllib.error.HTTPError as exc:
-        status("oMLX API", False, f"HTTP {exc.code} at {OMLX_BASE_URL}")
+        status("oMLX API", False, f"HTTP {exc.code} at {base_url}")
     except Exception as exc:
         status("oMLX API", False, f"{exc}")
 

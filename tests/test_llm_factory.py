@@ -39,6 +39,26 @@ class LlmFactoryTests(unittest.TestCase):
         self.assertTrue(chat_openai.called)
         self.assertEqual(chat_openai.call_args.kwargs["model_name"], "Gemma4-MTP-26B-BF16")
 
+    def test_omlx_model_helper_prefers_explicit_value(self):
+        with patch.dict(os.environ, {"OMLX_MODEL": "env-model"}, clear=True):
+            self.assertEqual(llm_factory.get_omlx_model_name("explicit-model"), "explicit-model")
+
+    def test_omlx_model_helper_prefers_omlx_model_env(self):
+        env = {
+            "OMLX_MODEL": "omlx-model",
+            "MORNING_DISPATCH_LIBRARIAN_MODEL": "morning-model",
+        }
+        with patch.dict(os.environ, env, clear=True):
+            self.assertEqual(llm_factory.get_omlx_model_name(), "omlx-model")
+
+    def test_omlx_base_url_prefers_morning_dispatch_env(self):
+        env = {
+            "MORNING_DISPATCH_MODEL_BASE_URL": "http://morning.local/v1",
+            "OMLX_BASE_URL": "http://omlx.local/v1",
+        }
+        with patch.dict(os.environ, env, clear=True):
+            self.assertEqual(llm_factory.get_omlx_base_url(), "http://morning.local/v1")
+
 
 if __name__ == "__main__":
     unittest.main()

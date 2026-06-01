@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import subprocess
 import sys
 import urllib.request
@@ -14,7 +13,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from index_state import read_index_status
-from llm_factory import _get_omlx_api_key
+from llm_factory import _get_omlx_api_key, get_omlx_base_url, get_omlx_model_name
 
 
 def parse_args() -> argparse.Namespace:
@@ -30,7 +29,8 @@ def check_omlx() -> tuple[bool, str]:
     api_key = _get_omlx_api_key()
     if not api_key:
         return False, "oMLX API key not found"
-    base_url = os.getenv("MORNING_DISPATCH_MODEL_BASE_URL") or os.getenv("OMLX_BASE_URL", "http://127.0.0.1:1234/v1")
+    base_url = get_omlx_base_url()
+    selected_model = get_omlx_model_name()
     request = urllib.request.Request(
         base_url.rstrip("/") + "/models",
         headers={"Authorization": f"Bearer {api_key}"},
@@ -40,7 +40,12 @@ def check_omlx() -> tuple[bool, str]:
             payload = json.loads(response.read().decode("utf-8"))
     except Exception as exc:
         return False, f"oMLX models check failed at {base_url}: {exc}"
-    return True, f"{len(payload.get('data', []))} models at {base_url}"
+    models = payload.get("data", [])
+    model_ids = {model.get("id") for model in models if isinstance(model, dict)}
+    if selected_model not in model_ids:
+        available = ", ".join(sorted(model_id for model_id in model_ids if model_id)) or "none"
+        return False, f"configured model {selected_model} not found at {base_url}; available: {available}"
+    return True, f"{selected_model} available at {base_url} ({len(models)} models)"
 
 
 def run_final_validation(skip_rag: bool) -> tuple[bool, str]:
