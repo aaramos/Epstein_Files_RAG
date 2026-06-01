@@ -175,7 +175,8 @@ are indexed. It also removes a stale `runtime/index_full.lock` before the final
 audit, which is useful if an older pre-lock indexer finished successfully. On
 completion it writes a diagnostics bundle unless `RUN_COMPLETION_DIAGNOSTICS=0`
 is set; diagnostics are collected even when the final audit or validation fails,
-then `make wait` exits with the validation status. Set
+or when progress becomes stale, then `make wait` exits with the validation or
+progress status. Set
 `RUN_FINAL_AUDIT=0 make wait` to run only the older final RAG validation path, or
 `RUN_FINAL_AUDIT=0 RUN_FINAL_VALIDATE=0 make wait` to only wait and report
 completion.

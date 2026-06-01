@@ -47,6 +47,13 @@ class ShellScriptTests(unittest.TestCase):
         self.assertIn("scripts/collect_diagnostics.sh", script)
         self.assertIn('exit "$VALIDATION_STATUS"', script)
 
+    def test_wait_collects_diagnostics_after_stale_progress(self):
+        script = (ROOT / "scripts" / "wait_for_index.sh").read_text()
+
+        self.assertIn('PROGRESS_STATUS="$?"', script)
+        self.assertIn('if [[ "$PROGRESS_STATUS" != "0" ]]', script)
+        self.assertIn('exit "$PROGRESS_STATUS"', script)
+
     def test_check_runs_final_audit_after_complete_index(self):
         script = (ROOT / "scripts" / "check_all.sh").read_text()
 

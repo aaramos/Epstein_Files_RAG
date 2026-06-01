@@ -9,7 +9,16 @@ RUN_FINAL_VALIDATE="${RUN_FINAL_VALIDATE:-1}"
 RUN_COMPLETION_DIAGNOSTICS="${RUN_COMPLETION_DIAGNOSTICS:-1}"
 
 while true; do
+  set +e
   .venv/bin/python scripts/progress.py --fail-stale
+  PROGRESS_STATUS="$?"
+  set -e
+  if [[ "$PROGRESS_STATUS" != "0" ]]; then
+    if [[ "$RUN_COMPLETION_DIAGNOSTICS" == "1" ]]; then
+      scripts/collect_diagnostics.sh
+    fi
+    exit "$PROGRESS_STATUS"
+  fi
 
   if .venv/bin/python - <<'PY'
 from index_state import read_index_status
