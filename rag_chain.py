@@ -1,6 +1,5 @@
 import os
 os.environ["USE_TORCH"] = "1" # Force PyTorch, disable TensorFlow
-import os
 from functools import lru_cache
 from dotenv import load_dotenv
 from langchain_chroma import Chroma
@@ -14,7 +13,11 @@ load_dotenv()
 
 # Constants
 DB_DIR = os.getenv("DB_PATH", "./chroma_db")
-EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
+DEFAULT_EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
+
+
+def embedding_model():
+    return os.getenv("EMBEDDING_MODEL", DEFAULT_EMBEDDING_MODEL)
 
 
 def _embedding_device():
@@ -35,7 +38,7 @@ def get_embeddings():
     selected_device = _embedding_device()
     try:
         return HuggingFaceEmbeddings(
-            model_name=EMBEDDING_MODEL,
+            model_name=embedding_model(),
             model_kwargs={"device": selected_device},
             encode_kwargs={"batch_size": int(os.getenv("EMBEDDING_QUERY_BATCH_SIZE", "32"))},
         )
@@ -44,7 +47,7 @@ def get_embeddings():
             raise
         print(f"Embedding device '{selected_device}' failed ({exc}); falling back to CPU.")
         return HuggingFaceEmbeddings(
-            model_name=EMBEDDING_MODEL,
+            model_name=embedding_model(),
             model_kwargs={"device": "cpu"},
             encode_kwargs={"batch_size": int(os.getenv("EMBEDDING_QUERY_BATCH_SIZE", "32"))},
         )

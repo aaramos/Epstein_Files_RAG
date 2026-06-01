@@ -117,6 +117,8 @@ to test concurrent read/write behavior.
 
 Useful ingestion tuning knobs:
 
+- `EMBEDDING_MODEL`: embedding model used for both ingestion and retrieval.
+  Keep this unchanged after indexing unless you rebuild Chroma.
 - `--row-batch-size`: parquet rows to stream at once.
 - `--batch-size`: chunks to embed/write to Chroma at once.
 - `--embedding-device mps`: request Apple Silicon acceleration for native runs.
