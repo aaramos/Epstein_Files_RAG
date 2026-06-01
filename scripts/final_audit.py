@@ -241,6 +241,7 @@ def audit_payload(skip_app: bool = False, skip_rag: bool = False) -> dict:
     if progress:
         payload["progress"] = {
             "data": progress.get("data"),
+            "index_storage": progress.get("index_storage"),
             "rate_files_per_minute": progress.get("rate_files_per_minute"),
             "eta_seconds": progress.get("eta_seconds"),
             "eta_at_utc": progress.get("eta_at_utc"),

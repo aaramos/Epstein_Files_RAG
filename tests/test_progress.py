@@ -269,6 +269,23 @@ class ProgressTests(unittest.TestCase):
         self.assertEqual(payload["resolved_path"], str(real_data.resolve()))
         self.assertEqual(payload["size_bytes"], 4)
 
+    def test_index_storage_payload_reports_chroma_size(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            db_dir = root / "chroma_db"
+            db_dir.mkdir()
+            (db_dir / "index.sqlite3").write_bytes(b"abc")
+            subdir = db_dir / "segments"
+            subdir.mkdir()
+            (subdir / "segment.bin").write_bytes(b"de")
+
+            with patch.dict(os.environ, {"DB_PATH": str(db_dir)}, clear=False):
+                payload = progress.index_storage_payload(root)
+
+        self.assertEqual(payload["path"], str(db_dir))
+        self.assertEqual(payload["size_bytes"], 5)
+        self.assertEqual(payload["size_human"], "5 B")
+
 
 if __name__ == "__main__":
     unittest.main()

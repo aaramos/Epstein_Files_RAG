@@ -96,6 +96,31 @@ def data_payload(root: Path = ROOT) -> dict:
     }
 
 
+def directory_size_bytes(path: Path) -> int | None:
+    total_bytes = 0
+    try:
+        iterator = path.rglob("*")
+        for item in iterator:
+            try:
+                if item.is_file():
+                    total_bytes += item.stat().st_size
+            except OSError:
+                return None
+    except OSError:
+        return None
+    return total_bytes
+
+
+def index_storage_payload(root: Path = ROOT) -> dict:
+    db_dir = Path(os.getenv("DB_PATH", str(root / "chroma_db")))
+    size_bytes = directory_size_bytes(db_dir) if db_dir.exists() else None
+    return {
+        "path": str(db_dir),
+        "size_bytes": size_bytes,
+        "size_human": human_size(size_bytes),
+    }
+
+
 def index_log_path(root: Path = ROOT) -> Path:
     return Path(os.getenv("INDEX_LOG_PATH", str(root / "runtime" / "index_full.log")))
 
@@ -225,9 +250,11 @@ def progress_payload() -> dict:
     stale = bool(status.indexing_active and log_age is not None and log_age > stale_after)
     lock = lock_payload(now)
     data = data_payload(ROOT)
+    index_storage = index_storage_payload(ROOT)
 
     return {
         "data": data,
+        "index_storage": index_storage,
         "downloaded_files": status.downloaded_files,
         "expected_files": status.expected_files,
         "indexed_files": status.indexed_files,
@@ -267,6 +294,10 @@ def print_human(payload: dict) -> None:
         if resolved and resolved != data.get("path"):
             print(f"Data resolves to: {resolved}")
         print(f"Data size: {data.get('size_human', 'unknown')}")
+    index_storage = payload.get("index_storage") or {}
+    if index_storage:
+        print(f"Index path: {index_storage.get('path')}")
+        print(f"Index size: {index_storage.get('size_human', 'unknown')}")
     print(f"Downloaded files: {payload['downloaded_files']}/{payload['expected_files']}")
     indexed_fraction = payload["indexed_fraction"] or 0
     print(f"Indexed files: {payload['indexed_files']}/{payload['expected_files']} ({indexed_fraction:.1%})")
