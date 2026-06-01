@@ -10,6 +10,7 @@ data
 data/
 chroma_db/
 chroma_db_repair_sandbox/
+chroma_db_rebuild/
 faiss_index/
 runtime/
 
