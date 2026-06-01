@@ -62,7 +62,9 @@ make wait
 `scripts/progress.sh` also reports manifest and index-log freshness. If an
 active indexer has not written to `runtime/index_full.log` for more than
 `INDEX_STALE_SECONDS` seconds, it prints a warning. Use
-`scripts/progress.sh --json` for machine-readable monitor output.
+`scripts/progress.sh --json` for machine-readable monitor output. The progress
+report also lists live `ingest.py` process IDs and warns if the manifest says
+indexing is active but no indexer process is running.
 
 To run a Mac readiness check:
 

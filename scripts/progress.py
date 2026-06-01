@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import subprocess
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -59,6 +60,58 @@ def stale_seconds() -> int:
     return int(os.getenv("INDEX_STALE_SECONDS", "600"))
 
 
+def scan_indexer_processes() -> tuple[list[dict], bool]:
+    pgrep_processes, pgrep_available = processes_from_pgrep()
+    if pgrep_processes or not pgrep_available:
+        return pgrep_processes, pgrep_available
+    return processes_from_ps()
+
+
+def processes_from_pgrep() -> tuple[list[dict], bool]:
+    try:
+        result = subprocess.run(
+            ["pgrep", "-fl", "ingest.py"],
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+    except OSError:
+        return [], False
+    unavailable = "Cannot get process list" in result.stderr or "service not found" in result.stderr
+    if unavailable:
+        return [], False
+    return parse_process_lines(result.stdout.splitlines()), True
+
+
+def processes_from_ps() -> tuple[list[dict], bool]:
+    try:
+        result = subprocess.run(
+            ["ps", "-axo", "pid=,command="],
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+    except OSError:
+        return [], False
+    unavailable = "Cannot get process list" in result.stderr or "service not found" in result.stderr
+    if unavailable:
+        return [], False
+    return parse_process_lines(line for line in result.stdout.splitlines() if "ingest.py" in line), True
+
+
+def parse_process_lines(lines) -> list[dict]:
+    processes = []
+    for line in lines:
+        stripped = line.strip()
+        if not stripped:
+            continue
+        pid, _, command = stripped.partition(" ")
+        if not pid.isdigit():
+            continue
+        processes.append({"pid": int(pid), "command": command.strip()})
+    return processes
+
+
 def progress_payload() -> dict:
     manifest = load_manifest(default_manifest_path(ROOT))
     status = read_index_status(root=ROOT)
@@ -86,6 +139,8 @@ def progress_payload() -> dict:
     manifest_age = file_age_seconds(default_manifest_path(ROOT), now)
     stale_after = stale_seconds()
     log_age = file_age_seconds(index_log_path(ROOT), now)
+    processes, process_scan_available = scan_indexer_processes()
+    process_missing = bool(status.indexing_active and process_scan_available and not processes)
     stale = bool(status.indexing_active and log_age is not None and log_age > stale_after)
 
     return {
@@ -106,6 +161,10 @@ def progress_payload() -> dict:
         "index_log_age_seconds": log_age,
         "stale_seconds": stale_after,
         "stale": stale,
+        "indexer_process_count": len(processes),
+        "indexer_processes": processes,
+        "indexer_process_missing": process_missing,
+        "indexer_process_scan_available": process_scan_available,
     }
 
 
@@ -124,6 +183,15 @@ def print_human(payload: dict) -> None:
     log_age = payload["index_log_age_seconds"]
     print(f"Manifest updated: {human_duration(manifest_age)} ago" if manifest_age is not None else "Manifest updated: unknown")
     print(f"Index log updated: {human_duration(log_age)} ago" if log_age is not None else "Index log updated: unknown")
+    if not payload["indexer_process_scan_available"]:
+        print("Indexer processes: unavailable")
+    elif payload["indexer_process_count"]:
+        process_summary = ", ".join(str(process["pid"]) for process in payload["indexer_processes"])
+        print(f"Indexer processes: {process_summary}")
+    else:
+        print("Indexer processes: none")
+    if payload["indexer_process_missing"]:
+        print("Warning: manifest shows active indexing but no ingest.py process was found")
     if payload["stale"]:
         print(f"Warning: index log has been quiet for more than {human_duration(payload['stale_seconds'])}")
 

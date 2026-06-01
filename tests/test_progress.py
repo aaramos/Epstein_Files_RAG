@@ -21,6 +21,17 @@ class ProgressTests(unittest.TestCase):
         self.assertEqual(progress.human_duration(67), "1m 7s")
         self.assertEqual(progress.human_duration(3661), "1h 1m")
 
+    def test_parse_process_lines(self):
+        processes = progress.parse_process_lines(
+            [
+                "88198 /opt/homebrew/bin/python ingest.py --all",
+                "not-a-pid python ingest.py",
+                "",
+            ]
+        )
+
+        self.assertEqual(processes, [{"pid": 88198, "command": "/opt/homebrew/bin/python ingest.py --all"}])
+
     def test_payload_reports_stale_active_indexer(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
@@ -55,12 +66,73 @@ class ProgressTests(unittest.TestCase):
             }
 
             with patch.dict(os.environ, env, clear=False):
-                payload = progress.progress_payload()
+                with patch.object(progress, "scan_indexer_processes", return_value=([{"pid": 123, "command": "python ingest.py"}], True)):
+                    payload = progress.progress_payload()
 
         self.assertTrue(payload["indexing_active"])
         self.assertTrue(payload["stale"])
         self.assertEqual(payload["stale_seconds"], 60)
         self.assertEqual(payload["indexed_chunks"], 4)
+        self.assertEqual(payload["indexer_process_count"], 1)
+        self.assertFalse(payload["indexer_process_missing"])
+        self.assertTrue(payload["indexer_process_scan_available"])
+
+    def test_payload_reports_missing_indexer_process(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            data_dir = root / "data"
+            data_dir.mkdir()
+            manifest_path = root / "manifest.json"
+            manifest_path.write_text(
+                json.dumps(
+                    {
+                        "completed_files": {},
+                        "in_progress": {"epstein_files-0001.parquet": {"started_at": "2026-01-01T00:01:00+00:00"}},
+                    }
+                )
+            )
+            env = {
+                "DATA_PATH": str(data_dir),
+                "INGEST_MANIFEST_PATH": str(manifest_path),
+                "INDEX_LOG_PATH": str(root / "missing.log"),
+                "EXPECTED_PARQUET_FILES": "2",
+            }
+
+            with patch.dict(os.environ, env, clear=False):
+                with patch.object(progress, "scan_indexer_processes", return_value=([], True)):
+                    payload = progress.progress_payload()
+
+        self.assertTrue(payload["indexing_active"])
+        self.assertEqual(payload["indexer_process_count"], 0)
+        self.assertTrue(payload["indexer_process_missing"])
+
+    def test_payload_does_not_warn_when_process_scan_unavailable(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            data_dir = root / "data"
+            data_dir.mkdir()
+            manifest_path = root / "manifest.json"
+            manifest_path.write_text(
+                json.dumps(
+                    {
+                        "completed_files": {},
+                        "in_progress": {"epstein_files-0001.parquet": {"started_at": "2026-01-01T00:01:00+00:00"}},
+                    }
+                )
+            )
+            env = {
+                "DATA_PATH": str(data_dir),
+                "INGEST_MANIFEST_PATH": str(manifest_path),
+                "INDEX_LOG_PATH": str(root / "missing.log"),
+                "EXPECTED_PARQUET_FILES": "2",
+            }
+
+            with patch.dict(os.environ, env, clear=False):
+                with patch.object(progress, "scan_indexer_processes", return_value=([], False)):
+                    payload = progress.progress_payload()
+
+        self.assertFalse(payload["indexer_process_scan_available"])
+        self.assertFalse(payload["indexer_process_missing"])
 
 
 if __name__ == "__main__":
