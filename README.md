@@ -155,6 +155,13 @@ PersistentClient, checking that the vector segment has no metadata gap, and
 running a tiny vector query. That catches the specific HNSW reader failure
 before a rebuilt directory is promoted.
 
+After the rebuilt Chroma directory validates, promote it with a timestamped
+backup of the current live directory:
+
+```bash
+CHROMA_REBUILD_DB_PATH=./chroma_db_rebuild make promote-chroma
+```
+
 Build and monitor the FAISS backend:
 
 ```bash

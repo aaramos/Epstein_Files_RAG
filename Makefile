@@ -1,6 +1,6 @@
 PYTHON ?= .venv/bin/python
 
-.PHONY: setup doctor status progress watch wait wait-notify validate validate-rag final-validate final-audit partial-audit partial-audit-json smoke-app diagnostics benchmark test check run index download build-faiss faiss-progress wait-faiss validate-faiss promote-faiss chroma-rebuild chroma-vector validate-chroma docker-up launchd-install launchd-uninstall launchd-status launchd-validate
+.PHONY: setup doctor status progress watch wait wait-notify validate validate-rag final-validate final-audit partial-audit partial-audit-json smoke-app diagnostics benchmark test check run index download build-faiss faiss-progress wait-faiss validate-faiss promote-faiss chroma-rebuild chroma-vector validate-chroma promote-chroma docker-up launchd-install launchd-uninstall launchd-status launchd-validate
 
 setup:
 	scripts/setup_macos.sh
@@ -88,6 +88,9 @@ chroma-vector:
 
 validate-chroma:
 	$(PYTHON) scripts/validate_chroma.py
+
+promote-chroma:
+	scripts/promote_chroma_rebuild.sh
 
 docker-up:
 	docker compose up --build

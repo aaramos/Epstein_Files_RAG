@@ -102,6 +102,17 @@ class ShellScriptTests(unittest.TestCase):
         self.assertIn("partial-audit-json:", makefile)
         self.assertIn("scripts/final_audit.sh --allow-incomplete --skip-app --json", makefile)
 
+    def test_chroma_promotion_validates_before_and_after_swap(self):
+        script = (ROOT / "scripts" / "promote_chroma_rebuild.sh").read_text()
+        makefile = (ROOT / "Makefile").read_text()
+
+        self.assertIn('SOURCE_DB="${CHROMA_REBUILD_DB_PATH:-./chroma_db_rebuild}"', script)
+        self.assertIn(".venv/bin/python scripts/validate_chroma.py --path \"$SOURCE_DB\"", script)
+        self.assertIn(".backup.$(date -u +%Y%m%dT%H%M%SZ)", script)
+        self.assertIn(".venv/bin/python scripts/validate_chroma.py --path \"$LIVE_DB\"", script)
+        self.assertIn("promote-chroma:", makefile)
+        self.assertIn("scripts/promote_chroma_rebuild.sh", makefile)
+
 
 if __name__ == "__main__":
     unittest.main()
