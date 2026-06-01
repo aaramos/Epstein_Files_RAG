@@ -44,6 +44,9 @@ class ProgressTests(unittest.TestCase):
             root = Path(tmpdir)
             data_dir = root / "data"
             data_dir.mkdir()
+            db_dir = root / "chroma_db"
+            db_dir.mkdir()
+            (db_dir / "index.sqlite3").write_bytes(b"abc")
             (data_dir / "epstein_files-0000.parquet").touch()
             (data_dir / "epstein_files-0001.parquet").touch()
             (data_dir / "epstein_files-0000.parquet").write_bytes(b"abcd")
@@ -80,6 +83,7 @@ class ProgressTests(unittest.TestCase):
             env = {
                 "DATA_PATH": str(data_dir),
                 "INGEST_MANIFEST_PATH": str(manifest_path),
+                "DB_PATH": str(db_dir),
                 "INDEX_LOG_PATH": str(log_path),
                 "INDEX_LOCK_PATH": str(lock_path),
                 "INDEX_STALE_SECONDS": "60",
@@ -93,6 +97,7 @@ class ProgressTests(unittest.TestCase):
         self.assertTrue(payload["indexing_active"])
         self.assertEqual(payload["data"]["size_bytes"], 6)
         self.assertEqual(payload["data"]["size_human"], "6 B")
+        self.assertEqual(payload["projected_index_size_human"], "6 B")
         self.assertTrue(payload["stale"])
         self.assertEqual(payload["stale_seconds"], 60)
         self.assertEqual(payload["indexed_chunks"], 4)

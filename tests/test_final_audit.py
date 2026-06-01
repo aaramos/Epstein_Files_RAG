@@ -276,6 +276,7 @@ class FinalAuditTests(unittest.TestCase):
                 "eta_seconds": 120,
                 "eta_at_utc": "2026-06-01T04:00:00+00:00",
                 "eta_at_local": "2026-05-31T21:00:00-07:00",
+                "projected_index_size_human": "31.0 GB",
                 "manifest_age_seconds": 2,
                 "index_log_age_seconds": 3,
             },
@@ -290,6 +291,7 @@ class FinalAuditTests(unittest.TestCase):
         self.assertEqual(payload["index"]["unexpected_indexed_sample"], [])
         self.assertEqual(payload["progress"]["data"]["size_human"], "317.2 GB")
         self.assertEqual(payload["progress"]["index_storage"]["size_human"], "21.0 GB")
+        self.assertEqual(payload["progress"]["projected_index_size_human"], "31.0 GB")
         self.assertEqual(payload["progress"]["rate_files_per_minute"], 2.5)
         self.assertEqual(payload["progress"]["eta_at_local"], "2026-05-31T21:00:00-07:00")
         full_index_gate = next(gate for gate in payload["gates"] if gate["key"] == "full_index")

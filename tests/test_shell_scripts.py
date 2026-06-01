@@ -48,6 +48,7 @@ class ShellScriptTests(unittest.TestCase):
         self.assertIn('"data_size_human": data.get("size_human")', script)
         self.assertIn('"index_size_human": index_storage.get("size_human")', script)
         self.assertIn('"index_free_human": index_storage.get("free_human")', script)
+        self.assertIn('"projected_index_size_human": progress.get("projected_index_size_human")', script)
         self.assertIn('"eta_at_local": progress.get("eta_at_local")', script)
         self.assertIn('"final_audit_complete": final_audit.get("complete")', script)
         self.assertIn('"skipped_gates": final_audit.get("skipped_gates")', script)

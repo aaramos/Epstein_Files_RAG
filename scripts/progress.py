@@ -264,6 +264,10 @@ def progress_payload() -> dict:
     lock = lock_payload(now)
     data = data_payload(ROOT)
     index_storage = index_storage_payload(ROOT)
+    indexed_fraction = status.indexed_files / status.expected_files if status.expected_files else None
+    projected_index_size = None
+    if index_storage["size_bytes"] is not None and indexed_fraction and indexed_fraction > 0:
+        projected_index_size = int(index_storage["size_bytes"] / indexed_fraction)
 
     return {
         "data": data,
@@ -271,7 +275,9 @@ def progress_payload() -> dict:
         "downloaded_files": status.downloaded_files,
         "expected_files": status.expected_files,
         "indexed_files": status.indexed_files,
-        "indexed_fraction": status.indexed_files / status.expected_files if status.expected_files else None,
+        "indexed_fraction": indexed_fraction,
+        "projected_index_size_bytes": projected_index_size,
+        "projected_index_size_human": human_size(projected_index_size),
         "in_progress_files": status.in_progress_files,
         "in_progress_names": list(status.in_progress_names),
         "indexed_documents": status.indexed_docs,
@@ -312,6 +318,8 @@ def print_human(payload: dict) -> None:
         print(f"Index path: {index_storage.get('path')}")
         print(f"Index size: {index_storage.get('size_human', 'unknown')}")
         print(f"Index volume free: {index_storage.get('free_human', 'unknown')} of {index_storage.get('total_human', 'unknown')}")
+    if payload.get("projected_index_size_human") != "unknown":
+        print(f"Projected final index size: {payload['projected_index_size_human']}")
     print(f"Downloaded files: {payload['downloaded_files']}/{payload['expected_files']}")
     indexed_fraction = payload["indexed_fraction"] or 0
     print(f"Indexed files: {payload['indexed_files']}/{payload['expected_files']} ({indexed_fraction:.1%})")

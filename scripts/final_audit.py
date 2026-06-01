@@ -246,6 +246,7 @@ def audit_payload(skip_app: bool = False, skip_rag: bool = False) -> dict:
             "eta_seconds": progress.get("eta_seconds"),
             "eta_at_utc": progress.get("eta_at_utc"),
             "eta_at_local": progress.get("eta_at_local"),
+            "projected_index_size_human": progress.get("projected_index_size_human"),
             "manifest_age_seconds": progress.get("manifest_age_seconds"),
             "index_log_age_seconds": progress.get("index_log_age_seconds"),
         }
