@@ -228,6 +228,7 @@ def audit_payload(skip_app: bool = False, skip_rag: bool = False) -> dict:
             "downloaded_files": status.downloaded_files,
             "expected_files": status.expected_files,
             "indexed_files": status.indexed_files,
+            "indexed_fraction": status.indexed_files / status.expected_files if status.expected_files else None,
             "in_progress_files": status.in_progress_files,
             "indexed_chunks": status.indexed_chunks,
             "missing_indexed_files": len(status.missing_indexed_names),

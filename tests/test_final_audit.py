@@ -270,6 +270,7 @@ class FinalAuditTests(unittest.TestCase):
 
         self.assertFalse(payload["complete"])
         self.assertEqual(payload["index"]["indexed_files"], 1)
+        self.assertEqual(payload["index"]["indexed_fraction"], 0.5)
         self.assertEqual(payload["index"]["missing_indexed_files"], 1)
         self.assertEqual(payload["index"]["missing_indexed_sample"], ["epstein_files-0001.parquet"])
         self.assertEqual(payload["index"]["unexpected_indexed_sample"], [])
