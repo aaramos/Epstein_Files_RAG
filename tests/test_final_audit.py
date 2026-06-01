@@ -127,6 +127,16 @@ class FinalAuditTests(unittest.TestCase):
         self.assertTrue(ok)
         self.assertIn("no active", detail)
 
+    def test_clean_stale_index_lock_removes_dead_owner_lock(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            lock_path = Path(tmpdir) / "index.lock"
+            lock_path.write_text('{"pid": 999999999, "command": "old"}')
+            with patch.object(final_audit, "index_lock_path", return_value=lock_path):
+                cleaned = final_audit.clean_stale_index_lock()
+
+        self.assertTrue(cleaned)
+        self.assertFalse(lock_path.exists())
+
     def test_check_disk_space_accepts_sufficient_space(self):
         usage = Mock(total=100 * 1024**3, free=50 * 1024**3)
         with patch.object(final_audit.shutil, "disk_usage", return_value=usage), patch.dict(
@@ -159,7 +169,9 @@ class FinalAuditTests(unittest.TestCase):
         )
         with patch.object(final_audit, "read_index_status", return_value=status), patch.object(
             final_audit, "check_omlx", return_value=(True, "ok")
-        ), patch.object(final_audit, "check_index_lock", return_value=(True, "lock ok")), patch.object(
+        ), patch.object(final_audit, "clean_stale_index_lock", return_value=False), patch.object(
+            final_audit, "check_index_lock", return_value=(True, "lock ok")
+        ), patch.object(
             final_audit, "check_disk_space", return_value=(True, "disk ok")
         ):
             payload = final_audit.audit_payload(skip_app=True)
@@ -182,7 +194,9 @@ class FinalAuditTests(unittest.TestCase):
         )
         with patch.object(final_audit, "read_index_status", return_value=status), patch.object(
             final_audit, "check_omlx", return_value=(True, "ok")
-        ), patch.object(final_audit, "check_index_lock", return_value=(True, "lock ok")), patch.object(
+        ), patch.object(final_audit, "clean_stale_index_lock", return_value=False), patch.object(
+            final_audit, "check_index_lock", return_value=(True, "lock ok")
+        ), patch.object(
             final_audit, "check_disk_space", return_value=(True, "disk ok")
         ), patch.object(
             final_audit, "run_app_smoke", return_value=(True, "app ok")
@@ -207,7 +221,9 @@ class FinalAuditTests(unittest.TestCase):
         )
         with patch.object(final_audit, "read_index_status", return_value=status), patch.object(
             final_audit, "check_omlx", return_value=(True, "ok")
-        ), patch.object(final_audit, "check_index_lock", return_value=(True, "lock ok")), patch.object(
+        ), patch.object(final_audit, "clean_stale_index_lock", return_value=False), patch.object(
+            final_audit, "check_index_lock", return_value=(True, "lock ok")
+        ), patch.object(
             final_audit, "check_disk_space", return_value=(True, "disk ok")
         ), patch.object(
             final_audit, "run_app_smoke", return_value=(True, "app ok")
@@ -232,7 +248,9 @@ class FinalAuditTests(unittest.TestCase):
         )
         with patch.object(final_audit, "read_index_status", return_value=status), patch.object(
             final_audit, "check_omlx", return_value=(True, "ok")
-        ), patch.object(final_audit, "check_index_lock", return_value=(True, "lock ok")), patch.object(
+        ), patch.object(final_audit, "clean_stale_index_lock", return_value=False), patch.object(
+            final_audit, "check_index_lock", return_value=(True, "lock ok")
+        ), patch.object(
             final_audit, "check_disk_space", return_value=(True, "disk ok")
         ), patch.object(
             final_audit, "run_final_validation", return_value=(True, "Validation OK")

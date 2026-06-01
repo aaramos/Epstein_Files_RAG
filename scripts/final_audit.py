@@ -18,7 +18,7 @@ if str(SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPTS_DIR))
 
 from index_state import read_index_status
-from index_lock import process_alive, read_lock
+from index_lock import process_alive, read_lock, release_stale_lock
 from llm_factory import _get_omlx_api_key, get_omlx_base_url, get_omlx_model_name
 
 
@@ -92,6 +92,10 @@ def check_index_lock(indexing_active: bool) -> tuple[bool, str]:
     return False, f"stale index lock at {path} for PID {pid}"
 
 
+def clean_stale_index_lock() -> bool:
+    return release_stale_lock(index_lock_path())
+
+
 def check_disk_space() -> tuple[bool, str]:
     min_free_gb = float(os.getenv("MIN_FREE_DISK_GB", "20"))
     target = DB_DIR if DB_DIR.exists() else DB_DIR.parent
@@ -112,6 +116,7 @@ def add_gate(gates: list[dict], key: str, label: str, ok: bool, detail: str, ski
 
 
 def audit_payload(skip_app: bool = False, skip_rag: bool = False) -> dict:
+    clean_stale_index_lock()
     status = read_index_status(root=ROOT)
     gates: list[dict] = []
 
