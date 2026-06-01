@@ -140,6 +140,7 @@ Inspect the live Chroma vector/metadata state:
 
 ```bash
 make chroma-vector
+make validate-chroma
 ```
 
 Build a replacement Chroma index into a separate directory with safer HNSW
@@ -148,6 +149,11 @@ batch/sync defaults. This refuses to overwrite the live `chroma_db` directly:
 ```bash
 CHROMA_REBUILD_DB_PATH=./chroma_db_rebuild scripts/rebuild_chroma_native.sh
 ```
+
+The rebuild command now finishes by opening Chroma through its normal
+PersistentClient, checking that the vector segment has no metadata gap, and
+running a tiny vector query. That catches the specific HNSW reader failure
+before a rebuilt directory is promoted.
 
 Build and monitor the FAISS backend:
 

@@ -46,3 +46,4 @@ else
 fi
 
 .venv/bin/python scripts/chroma_vector_diagnostics.py --path "$TARGET_DB"
+.venv/bin/python scripts/validate_chroma.py --path "$TARGET_DB"
